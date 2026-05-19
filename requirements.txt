@@ -1,0 +1,10 @@
+# Production runtime dependencies.
+# Pin to compatible-release operators (~=) so security patches flow but minor jumps don't surprise us.
+
+Django~=5.2.0
+psycopg[binary]~=3.2
+django-environ~=0.11
+whitenoise~=6.7
+gunicorn~=22.0
+sentry-sdk[django]~=2.14
+PyYAML~=6.0

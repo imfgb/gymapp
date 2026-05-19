@@ -1,0 +1,69 @@
+[project]
+name = "gymapp"
+version = "0.1.0"
+description = "Personal gym workout tracking web application (Django 5.2 + HTMX + Tailwind, Railway-deployed)."
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [
+    "migrations",
+    "static",
+    "staticfiles",
+    "media",
+    ".venv",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "DJ",  # flake8-django
+    "S",   # bandit (security)
+    "SIM", # simplify
+    "C4",  # comprehensions
+]
+ignore = [
+    "S101",  # use of assert (fine in tests)
+    "E501",  # line too long — handled by formatter where possible
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106"]   # assert + hardcoded password in fixtures
+"**/settings/*.py" = ["F405", "F403"] # star-imports across settings layers
+"manage.py" = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+]
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:django.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["gymapp", "config"]
+omit = ["*/migrations/*", "*/tests/*", "manage.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

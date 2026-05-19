@@ -1,0 +1,54 @@
+{
+  "$comment": "Single source of truth for the build-time backlog. Exactly one feature may be `in_progress` at a time — enforced by `.claude/init.sh`. Status: queued | in_progress | done. Add new features at the bottom; do not renumber.",
+  "features": [
+    {
+      "id": "phase0-scaffold",
+      "phase": 0,
+      "title": "Project scaffold",
+      "status": "done",
+      "summary": "Repo skeleton: settings, Docker, Postgres, custom User, owner-scoped manager, empty apps, .claude/ harness, docs."
+    },
+    {
+      "id": "phase1-exercises-catalogue",
+      "phase": 1,
+      "title": "Exercise catalogue (seed + custom)",
+      "status": "queued",
+      "summary": "Land MuscleGroup, Equipment, Exercise (with nullable owner), ExerciseAlternative. Data migration loads seeds/exercises.yaml. Admin CRUD."
+    },
+    {
+      "id": "phase1-routines",
+      "phase": 1,
+      "title": "Routines + WeeklySplit",
+      "status": "queued",
+      "summary": "Routine, RoutineDay, RoutineExercise, WeeklySplit. Owner-scoped. Admin + minimal user-facing list/create."
+    },
+    {
+      "id": "phase1-workout-session",
+      "phase": 1,
+      "title": "Workout session with interactive set checklist",
+      "status": "queued",
+      "summary": "WorkoutSession, ExerciseLog, SetLog with completed_at. HTMX tap-to-complete checklist; Alpine.js rest timer."
+    },
+    {
+      "id": "phase1-prs",
+      "phase": 1,
+      "title": "PR auto-detection + manual override",
+      "status": "queued",
+      "summary": "PersonalRecord model; signal/service that updates PRs when a SetLog is completed; PR list + edit views."
+    },
+    {
+      "id": "phase1-metrics",
+      "phase": 1,
+      "title": "Body metric snapshots",
+      "status": "queued",
+      "summary": "UserMetricSnapshot model + admin + simple chart/list. Profile edit form for height & DOB."
+    },
+    {
+      "id": "phase1-dashboard",
+      "phase": 1,
+      "title": "Dashboard: today / week / history / PR highlights",
+      "status": "queued",
+      "summary": "Replace the Phase 0 placeholder with real cards driven by routines + sessions + PRs."
+    }
+  ]
+}

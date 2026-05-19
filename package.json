@@ -1,0 +1,16 @@
+{
+  "name": "gymapp-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tailwind build pipeline for gymapp (prod uses this; dev uses the Play CDN).",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/tailwind.css -o ./static/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./static/src/tailwind.css -o ./static/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.13",
+    "@tailwindcss/forms": "^0.5.9",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47"
+  }
+}

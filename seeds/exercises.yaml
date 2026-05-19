@@ -1,0 +1,107 @@
+# Curated exercise seed.
+#
+# Phase 0: just enough rows to exercise the loader. Phase 1 expands to ~80–120.
+# Schema (consumed by a Phase 1 data migration):
+#
+#   muscle_groups:
+#     - slug:  unique kebab-case
+#       name:  display name (English — per plan decision #8)
+#       region: chest | back | shoulders | arms | legs | core
+#
+#   equipment:
+#     - slug
+#       name
+#
+#   exercises:
+#     - slug
+#       name
+#       equipment:           slug from `equipment` above
+#       primary_muscles:     [slug, ...]
+#       secondary_muscles:   [slug, ...]
+#       category:            compound | isolation
+#       unilateral:          bool
+#       alternatives:
+#         - slug:            slug of another exercise in this file
+#           reason:          short human-readable reason
+
+muscle_groups:
+  - {slug: chest, name: Chest, region: chest}
+  - {slug: lats, name: Lats, region: back}
+  - {slug: traps-mid, name: Mid-traps / Rhomboids, region: back}
+  - {slug: delts-front, name: Front Delts, region: shoulders}
+  - {slug: delts-side, name: Side Delts, region: shoulders}
+  - {slug: delts-rear, name: Rear Delts, region: shoulders}
+  - {slug: biceps, name: Biceps, region: arms}
+  - {slug: triceps, name: Triceps, region: arms}
+  - {slug: quads, name: Quads, region: legs}
+  - {slug: hamstrings, name: Hamstrings, region: legs}
+  - {slug: glutes, name: Glutes, region: legs}
+  - {slug: calves, name: Calves, region: legs}
+  - {slug: abs, name: Abs, region: core}
+
+equipment:
+  - {slug: barbell, name: Barbell}
+  - {slug: dumbbell, name: Dumbbell}
+  - {slug: machine, name: Machine}
+  - {slug: cable, name: Cable}
+  - {slug: bodyweight, name: Bodyweight}
+  - {slug: smith, name: Smith Machine}
+
+exercises:
+  - slug: bench-press
+    name: Bench Press
+    equipment: barbell
+    primary_muscles: [chest]
+    secondary_muscles: [triceps, delts-front]
+    category: compound
+    unilateral: false
+    alternatives:
+      - {slug: dumbbell-bench-press, reason: Same movement pattern, swap if barbell is busy.}
+      - {slug: smith-bench-press, reason: Smith variant when the rack is occupied.}
+
+  - slug: dumbbell-bench-press
+    name: Dumbbell Bench Press
+    equipment: dumbbell
+    primary_muscles: [chest]
+    secondary_muscles: [triceps, delts-front]
+    category: compound
+    unilateral: false
+    alternatives:
+      - {slug: bench-press, reason: Barbell variant when dumbbells are taken.}
+
+  - slug: smith-bench-press
+    name: Smith Machine Bench Press
+    equipment: smith
+    primary_muscles: [chest]
+    secondary_muscles: [triceps, delts-front]
+    category: compound
+    unilateral: false
+    alternatives:
+      - {slug: bench-press, reason: Free-weight variant.}
+
+  - slug: deadlift
+    name: Deadlift
+    equipment: barbell
+    primary_muscles: [hamstrings, glutes]
+    secondary_muscles: [lats, traps-mid]
+    category: compound
+    unilateral: false
+    alternatives: []
+
+  - slug: back-squat
+    name: Back Squat
+    equipment: barbell
+    primary_muscles: [quads, glutes]
+    secondary_muscles: [hamstrings]
+    category: compound
+    unilateral: false
+    alternatives: []
+
+  - slug: overhead-press
+    name: Overhead Press
+    equipment: barbell
+    primary_muscles: [delts-front]
+    secondary_muscles: [triceps, delts-side]
+    category: compound
+    unilateral: false
+    alternatives: []

@@ -1,0 +1,15 @@
+-r requirements.txt
+
+# Test stack
+pytest~=8.3
+pytest-django~=4.9
+factory-boy~=3.3
+coverage~=7.6
+
+# Lint / format
+ruff~=0.6
+pre-commit~=3.8
+
+# Dev quality-of-life
+django-debug-toolbar~=4.4
+ipython~=8.27

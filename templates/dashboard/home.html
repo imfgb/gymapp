@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Inicio · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-8">
+  <h1 class="text-2xl font-semibold">Hola{% if user.first_name %}, {{ user.first_name }}{% endif %}.</h1>
+  <p class="text-sm text-slate-600 mt-1">
+    Este es el panel de inicio. En la Fase 1 verás aquí tu entrenamiento de hoy, tu semana y tus PRs recientes.
+  </p>
+</header>
+
+<section class="grid gap-4 md:grid-cols-3">
+  <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <h2 class="text-sm font-medium text-slate-500">Hoy</h2>
+    <p class="mt-2 text-slate-900">Próximamente: tu rutina del día.</p>
+  </div>
+  <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <h2 class="text-sm font-medium text-slate-500">Esta semana</h2>
+    <p class="mt-2 text-slate-900">Próximamente: tu split semanal.</p>
+  </div>
+  <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <h2 class="text-sm font-medium text-slate-500">PRs</h2>
+    <p class="mt-2 text-slate-900">Próximamente: tus récords personales.</p>
+  </div>
+</section>
+{% endblock %}

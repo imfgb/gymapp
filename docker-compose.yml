@@ -1,0 +1,23 @@
+# Local development: Postgres only. The Django process runs on the host with
+# `python manage.py runserver` so reloads and breakpoints stay fast.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gymapp-postgres
+    environment:
+      POSTGRES_USER: gymapp
+      POSTGRES_PASSWORD: gymapp
+      POSTGRES_DB: gymapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - gymapp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymapp -d gymapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  gymapp_pgdata:

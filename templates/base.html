@@ -1,0 +1,50 @@
+{% load static %}<!doctype html>
+<html lang="es-mx" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}gymapp{% endblock %}</title>
+
+  {# Tailwind: Play CDN in dev (no build step), compiled CSS in prod. #}
+  {% if debug %}
+    <script src="https://cdn.tailwindcss.com"></script>
+  {% else %}
+    <link rel="stylesheet" href="{% static 'tailwind.css' %}">
+  {% endif %}
+
+  <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = document.querySelector('meta[name="csrf-token"]').content;
+      document.body.addEventListener("htmx:configRequest", (e) => {
+        e.detail.headers["X-CSRFToken"] = token;
+      });
+    });
+  </script>
+</head>
+<body class="h-full text-slate-900 antialiased" hx-boost="true">
+
+<div class="flex min-h-full flex-col md:flex-row">
+  {# Sidebar on md+, top bar on mobile. #}
+  {% if user.is_authenticated %}
+    {% include "partials/_nav.html" %}
+  {% endif %}
+
+  <main class="flex-1 px-4 py-6 md:px-8 md:py-10 max-w-5xl mx-auto w-full">
+    {% if messages %}
+      <ul class="mb-4 space-y-2">
+        {% for m in messages %}
+          <li class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm">{{ m }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+</body>
+</html>

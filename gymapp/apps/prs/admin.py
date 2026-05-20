@@ -10,5 +10,6 @@ class PersonalRecordAdmin(OwnerScopedAdmin):
     list_display = ("owner", "exercise", "weight_kg", "reps", "achieved_at", "source")
     list_filter = ("source", "exercise")
     search_fields = ("exercise__name",)
-    autocomplete_fields = ("owner", "exercise", "source_set")
+    autocomplete_fields = ("owner", "exercise")
+    raw_id_fields = ("source_set",)
     date_hierarchy = "achieved_at"

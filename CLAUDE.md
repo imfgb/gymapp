@@ -242,7 +242,7 @@ Detail → `ROADMAP.md`.
 
 ## 14. Current implementation status
 
-**Phase 1 in progress.** `phase1-exercises-catalogue` landed (models, migrations, seed loader, admin, tests).
+**Phase 1 — Tracking MVP: complete.** All six Phase 1 features in `.claude/feature_list.json` are `done`. The MVP loop works end-to-end: a user can build a routine, schedule it on weekdays, start today's workout from the dashboard, tap-complete sets with the rest timer, finish the session, and see PRs auto-detected.
 
 **Phase 0 — Scaffold: complete.**
 
@@ -259,13 +259,13 @@ Detail → `ROADMAP.md`.
 - `.claude/` harness with Leader/Implementer/Reviewer + Migration Writer + Test Writer agents.
 - Initial git commit and (optionally) the GitHub repo + Railway link land at the user's request.
 
-Phase 1 landed so far:
-- `exercises` app fully implemented: `MuscleGroup`, `Equipment`, `Exercise` (nullable owner, `visible_to(user)` queryset), `ExerciseAlternative` through-model with a `from != to` check constraint.
-- 78 curated exercises in `seeds/exercises.yaml` covering chest, back, shoulders, arms, legs, core across all equipment types, plus 42 alternative pairs (auto-mirrored to ~84 rows).
-- Idempotent loader at `gymapp/services/exercise_library/loader.py`; wired into `exercises.0002_seed_catalog` data migration.
-- `DeterministicSubstitution` service now backs onto the real graph (Protocol unchanged).
-- Admin for all 4 models with owner-scoped queryset for non-superusers.
-- Tests: `tests/apps/exercises/test_models.py` + `tests/services/test_exercise_library.py`.
+Phase 1 features landed:
+- **exercises**: `MuscleGroup`, `Equipment`, `Exercise` (nullable owner, `visible_to(user)`), `ExerciseAlternative` (directional, auto-mirrored). 78 curated exercises seeded across 17 muscle groups / 7 equipment types via idempotent loader + data migration. `DeterministicSubstitution` backs onto the real graph.
+- **routines**: `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit`. Owner-scoped. CHECK constraint on `target_reps_low <= target_reps_high`. UNIQUE `(owner, weekday)` on splits.
+- **workouts**: `WorkoutSession`, `ExerciseLog`, `SetLog`. Service-layer orchestration (`start_session`, `complete_set`, `update_set_values`, `swap_exercise`, `finish_session`, `session_progress`). HTMX tap-to-complete checklist + Alpine.js sticky rest timer. Owner-scoped at every entry point.
+- **prs**: `PersonalRecord` with `(owner, exercise, reps)` unique. `update_prs_from_session` runs on `finish_session` — keeps the heaviest weight per rep count. Manual create/edit/delete views.
+- **metrics**: `UserMetricSnapshot` (weight + optional body-fat) + self-serve `/metrics/profile/` editor for Profile baseline (height, DOB, training style, training goal, default rest seconds).
+- **dashboard**: Real home page — today's planned routine day (or in-progress session), this week's split, recent sessions, recent PRs, latest body metric. Replaces the Phase 0 placeholder.
 
 Update this section at the start of every phase transition.
 

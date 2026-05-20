@@ -40,14 +40,14 @@
       "id": "phase1-metrics",
       "phase": 1,
       "title": "Body metric snapshots",
-      "status": "queued",
+      "status": "done",
       "summary": "UserMetricSnapshot model + admin + simple chart/list. Profile edit form for height & DOB."
     },
     {
       "id": "phase1-dashboard",
       "phase": 1,
       "title": "Dashboard: today / week / history / PR highlights",
-      "status": "queued",
+      "status": "done",
       "summary": "Replace the Phase 0 placeholder with real cards driven by routines + sessions + PRs."
     }
   ]

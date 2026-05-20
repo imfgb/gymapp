@@ -2,25 +2,111 @@
 {% block title %}Inicio · gymapp{% endblock %}
 
 {% block content %}
-<header class="mb-8">
-  <h1 class="text-2xl font-semibold">Hola{% if user.first_name %}, {{ user.first_name }}{% endif %}.</h1>
-  <p class="text-sm text-slate-600 mt-1">
-    Este es el panel de inicio. En la Fase 1 verás aquí tu entrenamiento de hoy, tu semana y tus PRs recientes.
-  </p>
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Hola, {{ user.email|cut:"@gmail.com" }}.</h1>
+  <p class="text-sm text-slate-500">{{ today_split.routine_day.routine.name|default:"" }}</p>
 </header>
 
-<section class="grid gap-4 md:grid-cols-3">
-  <div class="rounded-lg border border-slate-200 bg-white p-4">
-    <h2 class="text-sm font-medium text-slate-500">Hoy</h2>
-    <p class="mt-2 text-slate-900">Próximamente: tu rutina del día.</p>
-  </div>
-  <div class="rounded-lg border border-slate-200 bg-white p-4">
-    <h2 class="text-sm font-medium text-slate-500">Esta semana</h2>
-    <p class="mt-2 text-slate-900">Próximamente: tu split semanal.</p>
-  </div>
-  <div class="rounded-lg border border-slate-200 bg-white p-4">
-    <h2 class="text-sm font-medium text-slate-500">PRs</h2>
-    <p class="mt-2 text-slate-900">Próximamente: tus récords personales.</p>
-  </div>
+{# ============ TODAY ============ #}
+<section class="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-2 text-sm uppercase tracking-wide text-slate-500">Hoy</h2>
+  {% if in_progress %}
+    <p class="mb-3 text-lg font-medium">Tienes un entrenamiento en curso.</p>
+    <a href="{% url 'workouts:session' in_progress.id %}"
+       class="inline-block rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400">
+      Continuar entrenamiento
+    </a>
+  {% elif today_split and today_split.routine_day %}
+    <p class="mb-3 text-lg font-medium">{{ today_split.routine_day.label }}</p>
+    <p class="mb-3 text-sm text-slate-500">{{ today_split.routine_day.routine.name }}</p>
+    <form method="post" action="{% url 'workouts:start' %}">
+      {% csrf_token %}
+      <input type="hidden" name="routine_day" value="{{ today_split.routine_day.id }}">
+      <button class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+        Iniciar entrenamiento
+      </button>
+    </form>
+  {% else %}
+    <p class="text-slate-700">Día de descanso 🙌</p>
+  {% endif %}
 </section>
+
+{# ============ THIS WEEK ============ #}
+<section class="mb-8">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Esta semana</h2>
+  <ul class="grid grid-cols-2 gap-2 md:grid-cols-7">
+    {% for day in week_view %}
+      <li class="rounded-md border p-3 text-sm
+                 {% if day.is_today %}border-slate-900 bg-slate-900 text-white{% else %}border-slate-200 bg-white{% endif %}">
+        <p class="text-xs uppercase">{{ day.weekday_label|slice:":3" }}</p>
+        <p class="mt-1 font-medium">
+          {% if day.split and day.split.routine_day %}
+            {{ day.split.routine_day.label }}
+          {% else %}
+            <span class="{% if not day.is_today %}text-slate-400{% endif %}">Descanso</span>
+          {% endif %}
+        </p>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<div class="grid gap-6 md:grid-cols-3">
+  {# ============ RECENT SESSIONS ============ #}
+  <section class="rounded-lg border border-slate-200 bg-white p-5">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Recientes</h2>
+    {% if recent_sessions %}
+      <ul class="space-y-2 text-sm">
+        {% for s in recent_sessions %}
+          <li>
+            <a href="{% url 'workouts:session' s.id %}" class="hover:underline">
+              {% if s.source_routine_day %}{{ s.source_routine_day.label }}{% else %}Libre{% endif %}
+            </a>
+            <span class="text-slate-400">· {{ s.started_at|date:"d M" }}</span>
+            {% if s.status != "finished" %}
+              <span class="ml-1 text-xs text-amber-600">{{ s.get_status_display }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <a href="{% url 'workouts:history' %}" class="mt-3 inline-block text-xs text-slate-500 hover:underline">Historial completo →</a>
+    {% else %}
+      <p class="text-sm text-slate-500">Aún no hay entrenamientos.</p>
+    {% endif %}
+  </section>
+
+  {# ============ PR HIGHLIGHTS ============ #}
+  <section class="rounded-lg border border-slate-200 bg-white p-5">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">PRs recientes</h2>
+    {% if recent_prs %}
+      <ul class="space-y-2 text-sm">
+        {% for pr in recent_prs %}
+          <li>
+            <a href="{% url 'prs:detail' pr.exercise.slug %}" class="hover:underline">{{ pr.exercise.name }}</a>
+            <span class="ml-1 tabular-nums">{{ pr.weight_kg }}kg × {{ pr.reps }}</span>
+            <span class="ml-1 text-xs text-slate-400">{{ pr.achieved_at|date:"d M" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <a href="{% url 'prs:list' %}" class="mt-3 inline-block text-xs text-slate-500 hover:underline">Todos los PRs →</a>
+    {% else %}
+      <p class="text-sm text-slate-500">Sin PRs aún. Termina un entrenamiento para que se detecten.</p>
+    {% endif %}
+  </section>
+
+  {# ============ LATEST METRIC ============ #}
+  <section class="rounded-lg border border-slate-200 bg-white p-5">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Última medición</h2>
+    {% if latest_metric %}
+      <p class="text-2xl font-medium tabular-nums">{{ latest_metric.weight_kg }} kg</p>
+      {% if latest_metric.body_fat_pct is not None %}
+        <p class="text-sm text-slate-500">{{ latest_metric.body_fat_pct }}% grasa</p>
+      {% endif %}
+      <p class="mt-1 text-xs text-slate-400">{{ latest_metric.measured_at|date:"d M Y" }}</p>
+      <a href="{% url 'metrics:list' %}" class="mt-3 inline-block text-xs text-slate-500 hover:underline">Historial →</a>
+    {% else %}
+      <a href="{% url 'metrics:create' %}" class="text-sm text-slate-700 hover:underline">Registrar la primera medición</a>
+    {% endif %}
+  </section>
+</div>
 {% endblock %}

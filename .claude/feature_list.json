@@ -12,7 +12,7 @@
       "id": "phase1-exercises-catalogue",
       "phase": 1,
       "title": "Exercise catalogue (seed + custom)",
-      "status": "queued",
+      "status": "done",
       "summary": "Land MuscleGroup, Equipment, Exercise (with nullable owner), ExerciseAlternative. Data migration loads seeds/exercises.yaml. Admin CRUD."
     },
     {

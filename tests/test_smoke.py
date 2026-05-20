@@ -39,7 +39,11 @@ def test_progression_service_repeats_last_history():
     assert rec.rationale == "repeat_last"
 
 
-def test_substitution_service_returns_empty_in_phase_0():
+@pytest.mark.django_db
+def test_substitution_service_returns_empty_without_seed():
+    """Without any seeded exercises, substitution falls through to an empty
+    list. Real behaviour is covered in tests/services/test_exercise_library.py.
+    """
     from gymapp.services.coaching import substitution
 
-    assert substitution.alternatives_for("bench-press", ["dumbbell"]) == []
+    assert substitution.alternatives_for("does-not-exist", ["dumbbell"]) == []

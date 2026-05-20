@@ -242,6 +242,8 @@ Detail → `ROADMAP.md`.
 
 ## 14. Current implementation status
 
+**Phase 1 in progress.** `phase1-exercises-catalogue` landed (models, migrations, seed loader, admin, tests).
+
 **Phase 0 — Scaffold: complete.**
 
 - Repo skeleton created, all config files in place.
@@ -256,6 +258,14 @@ Detail → `ROADMAP.md`.
 - CI lints + tests on push.
 - `.claude/` harness with Leader/Implementer/Reviewer + Migration Writer + Test Writer agents.
 - Initial git commit and (optionally) the GitHub repo + Railway link land at the user's request.
+
+Phase 1 landed so far:
+- `exercises` app fully implemented: `MuscleGroup`, `Equipment`, `Exercise` (nullable owner, `visible_to(user)` queryset), `ExerciseAlternative` through-model with a `from != to` check constraint.
+- 78 curated exercises in `seeds/exercises.yaml` covering chest, back, shoulders, arms, legs, core across all equipment types, plus 42 alternative pairs (auto-mirrored to ~84 rows).
+- Idempotent loader at `gymapp/services/exercise_library/loader.py`; wired into `exercises.0002_seed_catalog` data migration.
+- `DeterministicSubstitution` service now backs onto the real graph (Protocol unchanged).
+- Admin for all 4 models with owner-scoped queryset for non-superusers.
+- Tests: `tests/apps/exercises/test_models.py` + `tests/services/test_exercise_library.py`.
 
 Update this section at the start of every phase transition.
 

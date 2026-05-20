@@ -1,12 +1,16 @@
 """Exercise library service.
 
-In Phase 1 this loads `seeds/exercises.yaml` via a data migration and exposes
-`lookup_alternatives(exercise, available_equipment)` — a pure dict query
-against the curated graph. Phase 4 may add an AI-ranked variant.
+The deterministic implementation backs onto `seeds/exercises.yaml` (loaded by
+the `exercises.0002_seed_catalog` data migration) and queries the
+`ExerciseAlternative` graph for substitutes.
+
+Phase 4 may add an AI-ranked variant; the Protocol is the swap point.
 """
 from __future__ import annotations
 
 from typing import Protocol
+
+from .loader import apply_seed, load_seed, lookup_alternatives  # noqa: F401
 
 
 class ExerciseLibraryStrategy(Protocol):
@@ -16,7 +20,14 @@ class ExerciseLibraryStrategy(Protocol):
 
 
 class DeterministicExerciseLibrary:
-    """Phase 0 stub. Phase 1 implements seed-driven lookup."""
-
     def lookup_alternatives(self, exercise_slug: str, available_equipment: list[str]) -> list[str]:
-        return []
+        return lookup_alternatives(exercise_slug, available_equipment)
+
+
+__all__ = [
+    "ExerciseLibraryStrategy",
+    "DeterministicExerciseLibrary",
+    "apply_seed",
+    "load_seed",
+    "lookup_alternatives",
+]

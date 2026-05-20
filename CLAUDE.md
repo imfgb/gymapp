@@ -161,6 +161,8 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 
 ## 8. Environment setup
 
+### Full setup (matches prod: Postgres via Docker)
+
 1. `python3.12 -m venv .venv && source .venv/bin/activate`
 2. `pip install -r requirements-dev.txt`
 3. `cp .env.example .env`; generate a secret key: `python -c "import secrets; print(secrets.token_urlsafe(50))"`; paste into `DJANGO_SECRET_KEY`.
@@ -169,6 +171,18 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 6. `python manage.py createsuperuser`.
 7. `python manage.py runserver`. Visit `http://127.0.0.1:8000/` (redirects to `/auth/login/`) and `http://127.0.0.1:8000/admin/`.
 8. `pre-commit install` once.
+
+### Fast local shortcut (no Docker — SQLite)
+
+For quick UI testing when Docker isn't running, override `DATABASE_URL` in `.env`:
+```
+DATABASE_URL=sqlite:///db.sqlite3
+```
+Then `migrate` + `createsuperuser` + `runserver` work unchanged. All models are SQLite-compatible (no Postgres-only features used). Tests still run against the test DB defined in `pyproject.toml`.
+
+### Seeding demo data (after `migrate`)
+
+Quickest way to get something to click around with — `python manage.py shell -c "..."` or save the seed snippet that was used in the first runserver session (see git log around the Phase 1 completion; the snippet creates a `PPL Demo` routine + a full `WeeklySplit` + a `UserMetricSnapshot`). A proper `manage.py seed_demo` command is a Phase 2 nicety.
 
 ---
 
@@ -244,6 +258,16 @@ Detail → `ROADMAP.md`.
 
 **Phase 1 — Tracking MVP: complete.** All six Phase 1 features in `.claude/feature_list.json` are `done`. The MVP loop works end-to-end: a user can build a routine, schedule it on weekdays, start today's workout from the dashboard, tap-complete sets with the rest timer, finish the session, and see PRs auto-detected.
 
+**First local test (2026-05-20):** Server ran on `127.0.0.1:8000` against SQLite with demo data. **User reported the UI feels noticeably slow on clicks and page changes.** Likely root causes, in order of impact (address these next):
+
+1. **Tailwind Play CDN does runtime CSS generation in the browser.** This is the biggest hit — every page load re-parses every class. **Fix:** install the PostCSS toolchain (`package.json` already declares it; needs `npm install` + `npm run build:css`), then `collectstatic`. The `base.html` already swaps to `{% static 'tailwind.css' %}` when `DEBUG=False`, but for dev we should switch the conditional so even dev uses the compiled file once it exists, falling back to CDN only when missing. Alternative: switch to Tailwind 4 standalone CLI (no Node).
+2. **`runserver` is single-threaded and re-runs static-file scans on every request in DEBUG mode.** Acceptable in dev; tolerate or run `gunicorn config.wsgi --reload --workers 2` for a smoother feel locally.
+3. **`hx-boost="true"` on `<body>`** turns every link into an AJAX swap. The full-page render still happens server-side and there's no spinner, so a 200–400ms response feels slow to the user. **Fix:** add an HTMX progress indicator (CSS class on `htmx-request`) so the user gets immediate visual feedback; consider removing boost on links that aren't worth the AJAX cost.
+4. **No `select_related` / `prefetch_related` in some dashboard / list views.** The dashboard view already uses `prefetch_related` for the session detail but PR-grouped queries do N joins. Audit with `django-debug-toolbar`.
+5. **First-paint of the rest timer's Alpine init.** Negligible but visible on slow CPUs.
+
+The order to attack these is (1) compiled Tailwind, (2) HTMX progress indicator, (3) query audit. Most of the win is in (1).
+
 **Phase 0 — Scaffold: complete.**
 
 - Repo skeleton created, all config files in place.
@@ -299,3 +323,21 @@ Update this section at the start of every phase transition.
 - Edit `CLAUDE.md` in the same commit that introduces an architectural or business change. A drift between this file and the code is a bug.
 - For one-line decisions, also append a line to `DECISIONS.md` (ADR format).
 - For deeper architectural sections, expand `ARCHITECTURE.md`.
+
+---
+
+## 18. Pending pickup (resume here)
+
+In priority order for the next session:
+
+1. **Frontend performance** — see §14 "First local test" notes. The biggest single win is compiling Tailwind locally instead of using the Play CDN. Acceptance: lighthouse "First Contentful Paint" under 500ms on the dashboard against SQLite.
+2. **GitHub push** — `gh auth login --hostname github.com --git-protocol ssh --web` (user runs it interactively), then `gh repo create imfgb/gymapp --private --source . --push`. 7 local commits are waiting.
+3. **Railway deploy** — runbook in `DEPLOYMENT.md §2`. Set env vars, point at GitHub.
+4. **Phase 2 entry** — once perf + deploy are done, start `phase2-programming` features per `ROADMAP.md`. First feature: training-style behaviour (progression rules per style).
+
+Local dev state at end of last session:
+- `.venv/` exists with `requirements-dev.txt` installed (Python 3.12.7).
+- `.env` configured for SQLite (`db.sqlite3`).
+- Superuser: `fglzb00@gmail.com` / `***REMOVED***`.
+- Demo `PPL Demo` routine + WeeklySplit + one body-metric snapshot already seeded for that user.
+- Server stopped. Start with: `source .venv/bin/activate && python manage.py runserver`.

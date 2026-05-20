@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Agregar PR · gymapp{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">Agregar PR manual</h1>
+<form method="post" class="max-w-sm space-y-4">
+  {% csrf_token %}
+  <label class="block">
+    <span class="text-sm text-slate-700">Ejercicio</span>
+    <select name="exercise" required
+            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+      {% for ex in exercises %}
+        <option value="{{ ex.slug }}">{{ ex.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-700">Peso (kg)</span>
+    <input type="number" name="weight_kg" step="0.5" min="0" required
+           class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-700">Reps</span>
+    <input type="number" name="reps" min="1" required
+           class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+  </label>
+  <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">Guardar</button>
+</form>
+{% endblock %}

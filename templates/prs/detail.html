@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ exercise.name }} · PRs · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <a href="{% url 'prs:list' %}" class="text-sm text-slate-500 hover:underline">← PRs</a>
+  <h1 class="mt-1 text-2xl font-semibold">{{ exercise.name }}</h1>
+  <p class="text-sm text-slate-500">{{ exercise.equipment.name }} · {{ exercise.get_category_display }}</p>
+</header>
+
+<table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
+  <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+    <tr>
+      <th class="px-4 py-2 text-left">Reps</th>
+      <th class="px-4 py-2 text-left">Peso</th>
+      <th class="px-4 py-2 text-left">Fecha</th>
+      <th class="px-4 py-2 text-left">Origen</th>
+      <th class="px-4 py-2 text-right">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for pr in prs %}
+      <tr class="border-t border-slate-100">
+        <td class="px-4 py-2 tabular-nums">{{ pr.reps }}</td>
+        <td class="px-4 py-2 tabular-nums font-medium">{{ pr.weight_kg }} kg</td>
+        <td class="px-4 py-2 text-slate-500">{{ pr.achieved_at|date:"d M Y H:i" }}</td>
+        <td class="px-4 py-2 text-xs text-slate-500">{{ pr.get_source_display }}</td>
+        <td class="px-4 py-2 text-right">
+          <a href="{% url 'prs:edit' pr.id %}" class="text-sm text-slate-700 hover:underline">Editar</a>
+          <form method="post" action="{% url 'prs:delete' pr.id %}" class="ml-2 inline">
+            {% csrf_token %}
+            <button class="text-sm text-rose-700 hover:underline"
+                    onclick="return confirm('¿Borrar este PR?');">Borrar</button>
+          </form>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="px-4 py-4 text-sm text-slate-500">Sin PRs aún.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -26,14 +26,14 @@
       "id": "phase1-workout-session",
       "phase": 1,
       "title": "Workout session with interactive set checklist",
-      "status": "in_progress",
+      "status": "done",
       "summary": "WorkoutSession, ExerciseLog, SetLog with completed_at. HTMX tap-to-complete checklist; Alpine.js rest timer."
     },
     {
       "id": "phase1-prs",
       "phase": 1,
       "title": "PR auto-detection + manual override",
-      "status": "queued",
+      "status": "in_progress",
       "summary": "PersonalRecord model; signal/service that updates PRs when a SetLog is completed; PR list + edit views."
     },
     {

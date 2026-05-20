@@ -19,7 +19,7 @@
       "id": "phase1-routines",
       "phase": 1,
       "title": "Routines + WeeklySplit",
-      "status": "queued",
+      "status": "done",
       "summary": "Routine, RoutineDay, RoutineExercise, WeeklySplit. Owner-scoped. Admin + minimal user-facing list/create."
     },
     {

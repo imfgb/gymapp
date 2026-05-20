@@ -6,14 +6,28 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}gymapp{% endblock %}</title>
 
-  {# Tailwind: Play CDN in dev (no build step), compiled CSS in prod. #}
-  {% if debug %}
-    <script src="https://cdn.tailwindcss.com"></script>
-  {% else %}
-    <link rel="stylesheet" href="{% static 'tailwind.css' %}">
-  {% endif %}
+  {# Compiled Tailwind. Run `npm run build:css` (or `npm run watch:css`) to refresh. #}
+  <link rel="stylesheet" href="{% static 'tailwind.css' %}">
 
-  <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
+  {# HTMX progress bar — visible feedback for every request. #}
+  <style>
+    #htmx-progress {
+      position: fixed; top: 0; left: 0; right: 0; height: 2px;
+      background: #0f172a;
+      transform-origin: left; transform: scaleX(0);
+      transition: transform 0.2s ease-out, opacity 0.2s linear;
+      opacity: 0; z-index: 9999; pointer-events: none;
+    }
+    body.htmx-request #htmx-progress { opacity: 1; animation: htmx-progress-pulse 1s ease-out infinite; }
+    @keyframes htmx-progress-pulse {
+      0%   { transform: scaleX(0); }
+      60%  { transform: scaleX(0.8); }
+      100% { transform: scaleX(0.95); }
+    }
+    [x-cloak] { display: none !important; }
+  </style>
+
+  <script src="https://unpkg.com/htmx.org@2.0.2"></script>
   <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
   <script>
@@ -22,10 +36,16 @@
       document.body.addEventListener("htmx:configRequest", (e) => {
         e.detail.headers["X-CSRFToken"] = token;
       });
+      // Trigger the progress bar on every htmx request (boosted links + forms).
+      document.body.addEventListener("htmx:beforeRequest", () => document.body.classList.add("htmx-request"));
+      document.body.addEventListener("htmx:afterRequest", () => document.body.classList.remove("htmx-request"));
+      document.body.addEventListener("htmx:responseError", () => document.body.classList.remove("htmx-request"));
     });
   </script>
 </head>
-<body class="h-full text-slate-900 antialiased" hx-boost="true">
+<body class="h-full text-slate-900 antialiased" hx-boost="true" hx-indicator="#htmx-progress">
+
+<div id="htmx-progress"></div>
 
 <div class="flex min-h-full flex-col md:flex-row">
   {# Sidebar on md+, top bar on mobile. #}

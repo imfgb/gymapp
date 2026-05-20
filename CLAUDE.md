@@ -258,15 +258,29 @@ Detail → `ROADMAP.md`.
 
 **Phase 1 — Tracking MVP: complete.** All six Phase 1 features in `.claude/feature_list.json` are `done`. The MVP loop works end-to-end: a user can build a routine, schedule it on weekdays, start today's workout from the dashboard, tap-complete sets with the rest timer, finish the session, and see PRs auto-detected.
 
-**First local test (2026-05-20):** Server ran on `127.0.0.1:8000` against SQLite with demo data. **User reported the UI feels noticeably slow on clicks and page changes.** Likely root causes, in order of impact (address these next):
+**First local test (2026-05-20):** Server ran on `127.0.0.1:8000` against SQLite with demo data. **User reported the UI feels slow.**
 
-1. **Tailwind Play CDN does runtime CSS generation in the browser.** This is the biggest hit — every page load re-parses every class. **Fix:** install the PostCSS toolchain (`package.json` already declares it; needs `npm install` + `npm run build:css`), then `collectstatic`. The `base.html` already swaps to `{% static 'tailwind.css' %}` when `DEBUG=False`, but for dev we should switch the conditional so even dev uses the compiled file once it exists, falling back to CDN only when missing. Alternative: switch to Tailwind 4 standalone CLI (no Node).
-2. **`runserver` is single-threaded and re-runs static-file scans on every request in DEBUG mode.** Acceptable in dev; tolerate or run `gunicorn config.wsgi --reload --workers 2` for a smoother feel locally.
-3. **`hx-boost="true"` on `<body>`** turns every link into an AJAX swap. The full-page render still happens server-side and there's no spinner, so a 200–400ms response feels slow to the user. **Fix:** add an HTMX progress indicator (CSS class on `htmx-request`) so the user gets immediate visual feedback; consider removing boost on links that aren't worth the AJAX cost.
-4. **No `select_related` / `prefetch_related` in some dashboard / list views.** The dashboard view already uses `prefetch_related` for the session detail but PR-grouped queries do N joins. Audit with `django-debug-toolbar`.
-5. **First-paint of the rest timer's Alpine init.** Negligible but visible on slow CPUs.
+**Second test (2026-05-20, after applying app-level perf fixes):** A first request to `/auth/login/` took **10.1 seconds**. App-level fixes applied (still useful even after the real root cause is solved):
 
-The order to attack these is (1) compiled Tailwind, (2) HTMX progress indicator, (3) query audit. Most of the win is in (1).
+1. Compiled Tailwind locally (`npm install && npm run build:css`) and switched `templates/base.html` to always use `{% static 'tailwind.css' %}` instead of the Play CDN. No more browser-side JIT.
+2. Added an HTMX progress bar (`#htmx-progress`) — a 2px line at the top of the viewport that animates whenever an HTMX request is in flight. Wired in `base.html`.
+3. Overrode `STORAGES` in `config/settings/dev.py` to use `StaticFilesStorage` instead of Whitenoise's `CompressedManifestStaticFilesStorage`. The manifest variant requires `collectstatic` and would otherwise raise on every `{% static %}` tag in dev. (Prod keeps the manifest storage from `base.py`.)
+4. Audited dashboard + list view querysets — all use `select_related`/`prefetch_related` correctly. No N+1.
+
+**But the real root cause is environmental, not in the app code:**
+
+- The project lives at `/Users/fernandoulrich/Documents/gymapp/`. **`Documents/` is synced to iCloud Drive by default on macOS.**
+- The disk is **98% full (~4 GB free of 228 GB).**
+- iCloud Drive (`bird` daemon) is aggressively **offloading project files** to free local disk. Observed: `.venv` shrunk from 10 MB to 2.2 MB between two checks within minutes; `du -sh node_modules` shows `0B` despite 84 packages being installed.
+- Every Python `import` or template render that touches an offloaded file blocks waiting for iCloud to re-materialise it. `django.setup()` was observed to hang indefinitely on `django/utils/regex_helper.py` (captured via `faulthandler.dump_traceback_later`).
+
+**Fix (user action required):** Pick one —
+
+- **Move the project off iCloud.** `mkdir -p ~/Code && mv /Users/fernandoulrich/Documents/gymapp ~/Code/`. Cleanest fix; everything just works after.
+- **Free a lot of disk space** AND right-click `gymapp/` in Finder → "Keep Downloaded". This pins the directory locally and tells iCloud not to evict it. Less reliable than moving.
+- **Both.** Move it AND free up the disk (top hogs: `~/Library/Caches/Google` 3.9 GB, `~/Library/Caches/JetBrains` 1.4 GB, `~/Library/Caches/com.spotify.client` 1.1 GB, `~/Library/Caches/SiriTTS` 969 MB).
+
+Until one of those is done, `runserver` is unusable on this machine. Code is correct; environment is the blocker.
 
 **Phase 0 — Scaffold: complete.**
 
@@ -330,14 +344,15 @@ Update this section at the start of every phase transition.
 
 In priority order for the next session:
 
-1. **Frontend performance** — see §14 "First local test" notes. The biggest single win is compiling Tailwind locally instead of using the Play CDN. Acceptance: lighthouse "First Contentful Paint" under 500ms on the dashboard against SQLite.
-2. **GitHub push** — `gh auth login --hostname github.com --git-protocol ssh --web` (user runs it interactively), then `gh repo create imfgb/gymapp --private --source . --push`. 7 local commits are waiting.
-3. **Railway deploy** — runbook in `DEPLOYMENT.md §2`. Set env vars, point at GitHub.
-4. **Phase 2 entry** — once perf + deploy are done, start `phase2-programming` features per `ROADMAP.md`. First feature: training-style behaviour (progression rules per style).
+1. **Move the project off iCloud Drive** (see §14 "But the real root cause" section). Until this is done, `runserver` hangs and nothing else can be verified locally. After moving, re-create the venv (`rm -rf .venv && python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt`) because the venv contains absolute paths.
+2. **Verify the perf fixes actually feel fast.** Compiled Tailwind + HTMX progress bar + dev `STORAGES` override are already committed. Restart the server and click around.
+3. **GitHub push.** `gh` is installed; auth still pending. Have the user run `! gh auth login --hostname github.com --git-protocol ssh --web`, then `gh repo create imfgb/gymapp --private --source . --push`.
+4. **Railway deploy.** Runbook in `DEPLOYMENT.md §2`.
+5. **Phase 2.** Programming features per `ROADMAP.md`.
 
 Local dev state at end of last session:
-- `.venv/` exists with `requirements-dev.txt` installed (Python 3.12.7).
+- Python 3.12.7 + Node 24 + npm 11 installed and working.
+- `.venv/` and `node_modules/` exist but are being offloaded by iCloud — treat them as if they need a full reinstall after the move.
 - `.env` configured for SQLite (`db.sqlite3`).
-- Superuser: `fglzb00@gmail.com` / `***REMOVED***`.
-- Demo `PPL Demo` routine + WeeklySplit + one body-metric snapshot already seeded for that user.
-- Server stopped. Start with: `source .venv/bin/activate && python manage.py runserver`.
+- Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Demo `PPL Demo` routine + WeeklySplit + body-metric snapshot seeded.
+- Server stopped. After moving the project, regenerate venv, then: `source .venv/bin/activate && python manage.py runserver`.

@@ -1,0 +1,94 @@
+"""Metrics views: list snapshots, add new, edit profile baseline."""
+from __future__ import annotations
+
+from decimal import Decimal, InvalidOperation
+
+from django.contrib.auth.decorators import login_required
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_GET
+
+from gymapp.apps.metrics.models import UserMetricSnapshot
+
+
+def _decimal_or_none(raw):
+    if raw in (None, ""):
+        return None
+    try:
+        return Decimal(raw)
+    except (InvalidOperation, TypeError):
+        return None
+
+
+@login_required
+@require_GET
+def snapshot_list(request: HttpRequest) -> HttpResponse:
+    snapshots = UserMetricSnapshot.objects.for_user(request.user).order_by("-measured_at")
+    return render(request, "metrics/list.html", {"snapshots": snapshots})
+
+
+@login_required
+def snapshot_create(request: HttpRequest) -> HttpResponse:
+    if request.method == "POST":
+        weight = _decimal_or_none(request.POST.get("weight_kg"))
+        if weight is None:
+            return HttpResponseBadRequest("weight_kg required")
+        UserMetricSnapshot.objects.create(
+            owner=request.user,
+            measured_at=timezone.now(),
+            weight_kg=weight,
+            body_fat_pct=_decimal_or_none(request.POST.get("body_fat_pct")),
+            notes=request.POST.get("notes", "").strip(),
+        )
+        return redirect("metrics:list")
+    return render(request, "metrics/create.html", {})
+
+
+@login_required
+def snapshot_delete(request: HttpRequest, snapshot_id: int) -> HttpResponse:
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST only")
+    snapshot = get_object_or_404(
+        UserMetricSnapshot.objects.for_user(request.user), pk=snapshot_id
+    )
+    snapshot.delete()
+    return redirect("metrics:list")
+
+
+@login_required
+def profile_edit(request: HttpRequest) -> HttpResponse:
+    profile = request.user.profile
+    if request.method == "POST":
+        height = request.POST.get("height_cm")
+        dob = request.POST.get("date_of_birth")
+        try:
+            profile.height_cm = int(height) if height else None
+        except ValueError:
+            return HttpResponseBadRequest("invalid height_cm")
+        profile.date_of_birth = dob or None
+        profile.training_style = request.POST.get(
+            "training_style", profile.training_style
+        )
+        profile.training_goal = request.POST.get(
+            "training_goal", profile.training_goal
+        )
+        try:
+            profile.default_rest_seconds = int(
+                request.POST.get("default_rest_seconds") or profile.default_rest_seconds
+            )
+        except ValueError:
+            return HttpResponseBadRequest("invalid default_rest_seconds")
+        profile.save()
+        return redirect("metrics:profile")
+    from gymapp.apps.users.models import TrainingGoal, TrainingStyle
+
+    return render(
+        request,
+        "metrics/profile.html",
+        {
+            "profile": profile,
+            "training_styles": TrainingStyle.choices,
+            "training_goals": TrainingGoal.choices,
+        },
+    )

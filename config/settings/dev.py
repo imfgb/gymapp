@@ -21,3 +21,13 @@ except ImportError:
     pass
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# In dev, skip Whitenoise's manifest storage — it requires `collectstatic` to
+# build a manifest.json and otherwise raises ValueError on every {% static %}
+# tag, which is what made the first runserver test feel slow (10s/page).
+# Prod (`prod.py`) inherits the manifest storage from base.py and runs
+# collectstatic at build time.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}

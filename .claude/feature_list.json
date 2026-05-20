@@ -26,7 +26,7 @@
       "id": "phase1-workout-session",
       "phase": 1,
       "title": "Workout session with interactive set checklist",
-      "status": "queued",
+      "status": "in_progress",
       "summary": "WorkoutSession, ExerciseLog, SetLog with completed_at. HTMX tap-to-complete checklist; Alpine.js rest timer."
     },
     {

@@ -6,11 +6,11 @@
   </div>
 
   <ul class="flex md:flex-col gap-1 px-2 md:px-3 pb-3 md:pb-0 overflow-x-auto md:overflow-visible">
-    {% with active='dashboard:home' %}
-      <li><a class="block whitespace-nowrap rounded px-3 py-2 text-sm hover:bg-slate-800"
-             href="{% url 'dashboard:home' %}">Inicio</a></li>
-    {% endwith %}
-    {# More links land in Phase 1 (rutinas, ejercicios, historial, PRs). #}
+    <li><a class="block whitespace-nowrap rounded px-3 py-2 text-sm hover:bg-slate-800"
+           href="{% url 'dashboard:home' %}">Inicio</a></li>
+    <li><a class="block whitespace-nowrap rounded px-3 py-2 text-sm hover:bg-slate-800"
+           href="{% url 'workouts:history' %}">Entrenamientos</a></li>
+    {# More links land as later Phase 1 features ship (rutinas, ejercicios, PRs). #}
   </ul>
 
   <div class="mt-auto p-3 hidden md:block">

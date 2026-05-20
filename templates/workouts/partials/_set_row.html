@@ -1,0 +1,56 @@
+{# One set row. Self-replacing via hx-target="this" hx-swap="outerHTML". #}
+<form id="setlog-{{ set_log.id }}"
+      class="flex flex-wrap items-center gap-2 px-4 py-2 {% if set_log.is_complete %}bg-emerald-50/40{% endif %}"
+      hx-post="{% url 'workouts:complete_set' session.id set_log.id %}"
+      hx-target="this"
+      hx-swap="outerHTML"
+      {% if trigger_timer %}hx-trigger="set-completed-marker"{% endif %}>
+  {% csrf_token %}
+
+  <span class="w-6 text-sm text-slate-500 tabular-nums">{{ set_log.ordering|add:1 }}.</span>
+
+  <label class="flex items-center gap-1 text-xs text-slate-500">
+    <span class="sr-only">Peso</span>
+    <input type="number" name="weight_kg" inputmode="decimal" step="0.5" min="0"
+           value="{{ set_log.weight_kg|default_if_none:'' }}"
+           {% if set_log.is_complete %}readonly{% endif %}
+           class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+    <span class="text-xs text-slate-500">kg</span>
+  </label>
+
+  <span class="text-slate-400">×</span>
+
+  <label class="flex items-center gap-1 text-xs text-slate-500">
+    <span class="sr-only">Reps</span>
+    <input type="number" name="reps" inputmode="numeric" min="0"
+           value="{{ set_log.reps|default_if_none:'' }}"
+           {% if set_log.is_complete %}readonly{% endif %}
+           class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+    <span class="text-xs text-slate-500">reps</span>
+  </label>
+
+  {% if set_log.is_warmup %}
+    <span class="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">warm-up</span>
+  {% endif %}
+
+  <div class="ml-auto flex items-center gap-2">
+    {% if set_log.is_complete %}
+      <span class="text-sm text-emerald-700">✓ {{ set_log.completed_at|date:"H:i" }}</span>
+    {% else %}
+      <button type="submit"
+              class="rounded-md bg-slate-900 px-3 py-1 text-sm text-white hover:bg-slate-800">
+        Completar
+      </button>
+    {% endif %}
+  </div>
+
+  {% if trigger_timer %}
+    {# Fires the rest-timer Alpine listener after this row swaps in. #}
+    <script>
+      (function () {
+        const seconds = {{ rest_seconds_default|default:120 }};
+        window.dispatchEvent(new CustomEvent("rest-timer:start", { detail: { seconds }}));
+      })();
+    </script>
+  {% endif %}
+</form>

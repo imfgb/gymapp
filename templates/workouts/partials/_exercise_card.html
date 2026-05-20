@@ -1,0 +1,14 @@
+{# A single exercise within the session. Swappable in-place via HTMX. #}
+<article id="elog-{{ elog.id }}"
+         class="rounded-lg border border-slate-200 bg-white shadow-sm">
+  <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
+    <h2 class="text-lg font-medium">{{ elog.exercise.name }}</h2>
+    <span class="text-xs text-slate-500">{{ elog.exercise.equipment.name }}</span>
+  </header>
+
+  <div class="divide-y divide-slate-100">
+    {% for set_log in elog.set_logs.all %}
+      {% include "workouts/partials/_set_row.html" with set_log=set_log session=session trigger_timer=False %}
+    {% endfor %}
+  </div>
+</article>

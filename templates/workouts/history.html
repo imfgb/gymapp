@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Historial · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Historial</h1>
+  <p class="text-sm text-slate-500">Tus últimas 50 sesiones.</p>
+</header>
+
+<form method="post" action="{% url 'workouts:start' %}" class="mb-6">
+  {% csrf_token %}
+  <button type="submit"
+          class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+    Iniciar entrenamiento de hoy
+  </button>
+</form>
+
+<ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+  {% for s in sessions %}
+    <li class="flex items-center justify-between px-4 py-3">
+      <div>
+        <a class="font-medium hover:underline" href="{% url 'workouts:session' s.id %}">
+          {% if s.source_routine_day %}{{ s.source_routine_day.label }}{% else %}Entrenamiento libre{% endif %}
+        </a>
+        <p class="text-xs text-slate-500">
+          {{ s.started_at|date:"l d M, Y H:i" }}
+          {% if s.finished_at %} · {{ s.finished_at|timeuntil:s.started_at }}{% endif %}
+        </p>
+      </div>
+      <span class="text-xs uppercase tracking-wide text-slate-500">{{ s.get_status_display }}</span>
+    </li>
+  {% empty %}
+    <li class="px-4 py-6 text-sm text-slate-500">Aún no hay entrenamientos. Inicia el primero arriba.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

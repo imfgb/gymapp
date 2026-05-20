@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Entrenamiento · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold">
+      {% if session.source_routine_day %}
+        {{ session.source_routine_day.label }}
+      {% else %}
+        Entrenamiento libre
+      {% endif %}
+    </h1>
+    <p class="text-sm text-slate-500">
+      Iniciado {{ session.started_at|date:"l d M, H:i" }}
+      · <span id="progress-counter">{{ progress.completed }}</span>/<span>{{ progress.total }}</span> series
+    </p>
+  </div>
+
+  {% if session.is_active %}
+    <form method="post" action="{% url 'workouts:finish' session.id %}">
+      {% csrf_token %}
+      <button type="submit"
+              class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+        Terminar entrenamiento
+      </button>
+    </form>
+  {% else %}
+    <span class="rounded-md bg-slate-200 px-3 py-1 text-sm text-slate-700">
+      {{ session.get_status_display }}
+    </span>
+  {% endif %}
+</header>
+
+{# Rest timer — Alpine.js. Triggered by an HX-Trigger event from set-complete. #}
+<div x-data="restTimer({{ rest_seconds_default }})"
+     x-init="$nextTick(() => window.addEventListener('rest-timer:start', e => start(e.detail?.seconds)))"
+     x-show="active"
+     x-cloak
+     class="sticky top-2 z-10 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 shadow-sm">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-amber-700">Descanso</p>
+      <p class="text-2xl font-semibold tabular-nums" x-text="display"></p>
+    </div>
+    <div class="flex gap-2">
+      <button @click="add(30)" class="rounded bg-amber-100 px-2 py-1 text-sm">+30s</button>
+      <button @click="stop()" class="rounded bg-amber-600 px-3 py-1 text-sm text-white">Saltar</button>
+    </div>
+  </div>
+</div>
+
+<section class="space-y-4">
+  {% for elog in session.exercise_logs.all %}
+    {% include "workouts/partials/_exercise_card.html" with elog=elog session=session %}
+  {% empty %}
+    <p class="text-slate-500">Esta sesión no tiene ejercicios. Edítala en el admin para agregar alguno.</p>
+  {% endfor %}
+</section>
+
+<script>
+  function restTimer(defaultSeconds) {
+    return {
+      remaining: 0,
+      defaultSeconds: defaultSeconds,
+      active: false,
+      tick: null,
+      get display() {
+        const m = Math.floor(this.remaining / 60);
+        const s = String(this.remaining % 60).padStart(2, "0");
+        return `${m}:${s}`;
+      },
+      start(seconds) {
+        this.remaining = seconds || this.defaultSeconds;
+        this.active = true;
+        clearInterval(this.tick);
+        this.tick = setInterval(() => {
+          this.remaining -= 1;
+          if (this.remaining <= 0) {
+            this.stop();
+            try { new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=").play().catch(()=>{}); } catch (e) {}
+          }
+        }, 1000);
+      },
+      add(seconds) { this.remaining += seconds; },
+      stop() { clearInterval(this.tick); this.active = false; this.remaining = 0; },
+    };
+  }
+</script>
+{% endblock %}

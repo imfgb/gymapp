@@ -120,10 +120,13 @@ def swap_exercise(exercise_log: ExerciseLog, *, new_exercise: Exercise) -> Exerc
 def finish_session(
     session: WorkoutSession, *, finished_at: datetime | None = None
 ) -> WorkoutSession:
-    """Mark a session finished. PR detection will hook in here once `prs` lands."""
+    """Mark a session finished and trigger PR auto-detection."""
+    from gymapp.services.prs import update_prs_from_session
+
     session.status = WorkoutStatus.FINISHED
     session.finished_at = finished_at or timezone.now()
     session.save()
+    update_prs_from_session(session)
     return session
 
 
@@ -134,3 +137,89 @@ def session_progress(session: WorkoutSession) -> dict[str, int]:
     total = sets.count()
     completed = sets.filter(completed_at__isnull=False).count()
     return {"completed": completed, "total": total}
+
+
+DEFAULT_SETS_ON_ADD = 3
+
+
+@transaction.atomic
+def add_exercise_to_session(
+    session: WorkoutSession,
+    *,
+    exercise: Exercise,
+    sets_count: int = DEFAULT_SETS_ON_ADD,
+) -> ExerciseLog:
+    """Append an ExerciseLog (with N empty SetLogs) to an in-progress session."""
+    next_order = session.exercise_logs.count()
+    elog = ExerciseLog.objects.create(
+        session=session, exercise=exercise, ordering=next_order
+    )
+    for i in range(sets_count):
+        SetLog.objects.create(exercise_log=elog, ordering=i)
+    return elog
+
+
+@transaction.atomic
+def add_custom_exercise_and_use(
+    session: WorkoutSession,
+    *,
+    name: str,
+    equipment_slug: str,
+    primary_muscle_slugs: list[str] | None = None,
+    sets_count: int = DEFAULT_SETS_ON_ADD,
+) -> tuple[Exercise, ExerciseLog]:
+    """Create a per-user custom Exercise (owner=session.owner) and immediately
+    add it to the session. Useful when the user types a name we don't have.
+
+    Raises `ValueError` if the user already owns an exercise with the same
+    generated slug.
+    """
+    from django.utils.text import slugify
+
+    from gymapp.apps.exercises.models import Equipment, MuscleGroup
+
+    name = name.strip()
+    if not name:
+        raise ValueError("Exercise name is required.")
+    equipment = Equipment.objects.get(slug=equipment_slug)
+
+    slug = slugify(name)[:80]
+    if not slug:
+        raise ValueError("Name did not produce a valid slug.")
+
+    if Exercise.objects.filter(owner=session.owner, slug=slug).exists():
+        raise ValueError(f"You already have a custom exercise with slug '{slug}'.")
+
+    exercise = Exercise.objects.create(
+        owner=session.owner,
+        slug=slug,
+        name=name,
+        equipment=equipment,
+        category="compound",
+    )
+    if primary_muscle_slugs:
+        muscles = MuscleGroup.objects.filter(slug__in=primary_muscle_slugs)
+        exercise.primary_muscles.set(muscles)
+
+    elog = add_exercise_to_session(session, exercise=exercise, sets_count=sets_count)
+    return exercise, elog
+
+
+@transaction.atomic
+def add_set_to_exercise(exercise_log: ExerciseLog) -> SetLog:
+    """Append one empty SetLog to an ExerciseLog."""
+    next_order = exercise_log.set_logs.count()
+    return SetLog.objects.create(exercise_log=exercise_log, ordering=next_order)
+
+
+@transaction.atomic
+def delete_set(set_log: SetLog) -> None:
+    """Remove a SetLog. Allowed in any state (including completed) — useful for
+    correcting mistakes mid-workout."""
+    set_log.delete()
+
+
+@transaction.atomic
+def delete_exercise_log(exercise_log: ExerciseLog) -> None:
+    """Remove an ExerciseLog and all its SetLogs from the session."""
+    exercise_log.delete()

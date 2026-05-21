@@ -1,14 +1,40 @@
-{# A single exercise within the session. Swappable in-place via HTMX. #}
+{# A single exercise within the session. The wrapper id `elog-{{ elog.id }}` is
+   the swap target for: (a) full-card replacements after add-set/delete-set/
+   swap-exercise; (b) deletion (server returns empty body so outerHTML swap
+   removes the card entirely). #}
 <article id="elog-{{ elog.id }}"
          class="rounded-lg border border-slate-200 bg-white shadow-sm">
   <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
-    <h2 class="text-lg font-medium">{{ elog.exercise.name }}</h2>
-    <span class="text-xs text-slate-500">{{ elog.exercise.equipment.name }}</span>
+    <div>
+      <h2 class="text-lg font-medium">{{ elog.exercise.name }}</h2>
+      <span class="text-xs text-slate-500">{{ elog.exercise.equipment.name }}</span>
+    </div>
+    <div class="flex gap-2">
+      {% if session.is_active %}
+        <button type="button"
+                hx-post="{% url 'workouts:add_set' session.id elog.id %}"
+                hx-target="#elog-{{ elog.id }}"
+                hx-swap="outerHTML"
+                class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+          + serie
+        </button>
+        <button type="button"
+                hx-post="{% url 'workouts:delete_exercise_log' session.id elog.id %}"
+                hx-target="#elog-{{ elog.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="¿Eliminar este ejercicio de la sesión?"
+                class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+          Borrar
+        </button>
+      {% endif %}
+    </div>
   </header>
 
   <div class="divide-y divide-slate-100">
     {% for set_log in elog.set_logs.all %}
       {% include "workouts/partials/_set_row.html" with set_log=set_log session=session trigger_timer=False %}
+    {% empty %}
+      <p class="px-4 py-3 text-sm text-slate-500">Sin series. Usa “+ serie”.</p>
     {% endfor %}
   </div>
 </article>

@@ -1,10 +1,11 @@
-{# One set row. Self-replacing via hx-target="this" hx-swap="outerHTML". #}
+{# One set row. Self-replacing via hx-target="this" + outerHTML when the user
+   completes; the delete button targets the parent card so ordering stays
+   consistent after a row disappears. #}
 <form id="setlog-{{ set_log.id }}"
       class="flex flex-wrap items-center gap-2 px-4 py-2 {% if set_log.is_complete %}bg-emerald-50/40{% endif %}"
       hx-post="{% url 'workouts:complete_set' session.id set_log.id %}"
       hx-target="this"
-      hx-swap="outerHTML"
-      {% if trigger_timer %}hx-trigger="set-completed-marker"{% endif %}>
+      hx-swap="outerHTML">
   {% csrf_token %}
 
   <span class="w-6 text-sm text-slate-500 tabular-nums">{{ set_log.ordering|add:1 }}.</span>
@@ -42,10 +43,19 @@
         Completar
       </button>
     {% endif %}
+    {% if session.is_active %}
+      <button type="button"
+              hx-post="{% url 'workouts:delete_set' session.id set_log.id %}"
+              hx-target="#elog-{{ set_log.exercise_log_id }}"
+              hx-swap="outerHTML"
+              hx-confirm="¿Borrar esta serie?"
+              class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+        ✕
+      </button>
+    {% endif %}
   </div>
 
   {% if trigger_timer %}
-    {# Fires the rest-timer Alpine listener after this row swaps in. #}
     <script>
       (function () {
         const seconds = {{ rest_seconds_default|default:120 }};

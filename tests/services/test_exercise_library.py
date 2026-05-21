@@ -18,6 +18,16 @@ from gymapp.services.exercise_library import (
 )
 
 
+@pytest.fixture(autouse=True)
+def clean_catalog(db):
+    # The 0002_seed_catalog data migration populates the full catalogue; these
+    # tests apply their own small YAML and need exact-count assertions.
+    ExerciseAlternative.objects.all().delete()
+    Exercise.objects.all().delete()
+    MuscleGroup.objects.all().delete()
+    Equipment.objects.all().delete()
+
+
 SAMPLE_YAML = """
 muscle_groups:
   - {slug: chest, name: Chest, region: chest}

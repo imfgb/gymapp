@@ -70,17 +70,28 @@ def start(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_GET
 def session(request: HttpRequest, session_id: int) -> HttpResponse:
+    from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
+
     sess = get_object_or_404(
         WorkoutSession.objects.for_user(request.user).prefetch_related(
-            "exercise_logs__exercise",
+            "exercise_logs__exercise__equipment",
             "exercise_logs__set_logs",
         ),
         pk=session_id,
+    )
+    picker_exercises = (
+        Exercise.objects.visible_to(request.user)
+        .select_related("equipment")
+        .prefetch_related("primary_muscles")
+        .order_by("name")
     )
     context = {
         "session": sess,
         "progress": workouts_service.session_progress(sess),
         "rest_seconds_default": getattr(request.user.profile, "default_rest_seconds", 120),
+        "picker_exercises": picker_exercises,
+        "equipment_choices": Equipment.objects.order_by("name"),
+        "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
     }
     return render(request, "workouts/session.html", context)
 
@@ -190,3 +201,117 @@ def history(request: HttpRequest) -> HttpResponse:
         .select_related("source_routine_day__routine")[:50]
     )
     return render(request, "workouts/history.html", {"sessions": sessions})
+
+
+# ---------------------------------------------------------------------------
+# Live session editing (Phase 2: session-live-edit)
+# ---------------------------------------------------------------------------
+
+
+def _require_active_session(user, session_id: int) -> WorkoutSession:
+    sess = get_object_or_404(WorkoutSession.objects.for_user(user), pk=session_id)
+    if not sess.is_active:
+        raise PermissionError("Session is not in progress.")
+    return sess
+
+
+def _render_exercise_card(request, elog: ExerciseLog) -> HttpResponse:
+    return render(
+        request,
+        "workouts/partials/_exercise_card.html",
+        {"elog": elog, "session": elog.session},
+    )
+
+
+@login_required
+@require_POST
+def add_exercise_view(request: HttpRequest, session_id: int) -> HttpResponse:
+    """HTMX: append a catalogue exercise to the session. Returns the new card."""
+    from gymapp.apps.exercises.models import Exercise
+
+    sess = _require_active_session(request.user, session_id)
+    slug = request.POST.get("slug", "").strip()
+    if not slug:
+        return HttpResponseBadRequest("Missing slug")
+    exercise = get_object_or_404(
+        Exercise.objects.visible_to(request.user), slug=slug
+    )
+    try:
+        sets_count = max(1, int(request.POST.get("sets_count", "3")))
+    except ValueError:
+        sets_count = 3
+
+    elog = workouts_service.add_exercise_to_session(
+        sess, exercise=exercise, sets_count=sets_count
+    )
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
+def add_custom_exercise_view(request: HttpRequest, session_id: int) -> HttpResponse:
+    """HTMX: create a per-user custom Exercise and add it to the session in one shot."""
+    sess = _require_active_session(request.user, session_id)
+    name = request.POST.get("name", "").strip()
+    equipment_slug = request.POST.get("equipment", "").strip()
+    primary_muscle_slugs = [
+        s for s in request.POST.getlist("primary_muscles") if s.strip()
+    ]
+    try:
+        sets_count = max(1, int(request.POST.get("sets_count", "3")))
+    except ValueError:
+        sets_count = 3
+
+    try:
+        _, elog = workouts_service.add_custom_exercise_and_use(
+            sess,
+            name=name,
+            equipment_slug=equipment_slug,
+            primary_muscle_slugs=primary_muscle_slugs,
+            sets_count=sets_count,
+        )
+    except ValueError as exc:
+        return HttpResponseBadRequest(str(exc))
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
+def add_set_view(
+    request: HttpRequest, session_id: int, elog_id: int
+) -> HttpResponse:
+    """HTMX: append one empty SetLog and return the parent card."""
+    sess = _require_active_session(request.user, session_id)
+    elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
+    workouts_service.add_set_to_exercise(elog)
+    elog.refresh_from_db()
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
+def delete_set_view(
+    request: HttpRequest, session_id: int, set_id: int
+) -> HttpResponse:
+    """HTMX: delete a SetLog and return the parent card."""
+    sess = _require_active_session(request.user, session_id)
+    set_log = get_object_or_404(
+        SetLog, pk=set_id, exercise_log__session=sess
+    )
+    elog = set_log.exercise_log
+    workouts_service.delete_set(set_log)
+    elog.refresh_from_db()
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
+def delete_exercise_log_view(
+    request: HttpRequest, session_id: int, elog_id: int
+) -> HttpResponse:
+    """HTMX: delete an entire exercise from the session. Returns empty body for
+    hx-swap=outerHTML to remove the card."""
+    sess = _require_active_session(request.user, session_id)
+    elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
+    workouts_service.delete_exercise_log(elog)
+    return HttpResponse("", status=200)

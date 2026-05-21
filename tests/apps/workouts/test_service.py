@@ -160,3 +160,118 @@ def test_workout_session_owner_scoping(alice):
 
     assert WorkoutSession.objects.for_user(alice).count() == 1
     assert WorkoutSession.objects.for_user(bob).count() == 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: session live editing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_add_exercise_to_session_appends_with_default_sets(alice, bench):
+    session = workouts_service.start_session(alice)
+    assert session.exercise_logs.count() == 0
+
+    elog = workouts_service.add_exercise_to_session(session, exercise=bench)
+
+    assert elog.exercise_id == bench.id
+    assert elog.ordering == 0
+    assert elog.set_logs.count() == workouts_service.DEFAULT_SETS_ON_ADD
+    for s in elog.set_logs.all():
+        assert s.weight_kg is None and s.reps is None and s.completed_at is None
+
+
+@pytest.mark.django_db
+def test_add_exercise_increments_ordering(alice, bench):
+    session = workouts_service.start_session(alice)
+    other = ExerciseFactory(slug="other", equipment=bench.equipment)
+
+    workouts_service.add_exercise_to_session(session, exercise=bench, sets_count=2)
+    second = workouts_service.add_exercise_to_session(session, exercise=other, sets_count=2)
+
+    assert second.ordering == 1
+    assert session.exercise_logs.count() == 2
+
+
+@pytest.mark.django_db
+def test_add_custom_exercise_creates_owned_exercise_and_adds_to_session(alice):
+    # The seed data migration already populated `dumbbell` Equipment and
+    # `chest` MuscleGroup, so the service just needs to look them up.
+    from gymapp.apps.exercises.models import Exercise
+
+    session = workouts_service.start_session(alice)
+
+    exercise, elog = workouts_service.add_custom_exercise_and_use(
+        session,
+        name="My Garage Press",
+        equipment_slug="dumbbell",
+        primary_muscle_slugs=["chest"],
+        sets_count=4,
+    )
+
+    assert exercise.owner_id == alice.id
+    assert exercise.slug == "my-garage-press"
+    assert exercise.name == "My Garage Press"
+    assert set(exercise.primary_muscles.values_list("slug", flat=True)) == {"chest"}
+    assert elog.set_logs.count() == 4
+    # Visible to alice, not to other users.
+    bob = UserFactory(email="bob@example.com")
+    assert exercise in Exercise.objects.visible_to(alice)
+    assert exercise not in Exercise.objects.visible_to(bob)
+
+
+@pytest.mark.django_db
+def test_add_custom_exercise_rejects_empty_name(alice):
+    session = workouts_service.start_session(alice)
+    with pytest.raises(ValueError):
+        workouts_service.add_custom_exercise_and_use(
+            session, name="   ", equipment_slug="dumbbell"
+        )
+
+
+@pytest.mark.django_db
+def test_add_custom_exercise_rejects_duplicate_slug_per_owner(alice):
+    session = workouts_service.start_session(alice)
+
+    workouts_service.add_custom_exercise_and_use(
+        session, name="My Move", equipment_slug="dumbbell"
+    )
+    with pytest.raises(ValueError):
+        workouts_service.add_custom_exercise_and_use(
+            session, name="My Move", equipment_slug="dumbbell"
+        )
+
+
+@pytest.mark.django_db
+def test_add_set_appends_with_correct_ordering(alice, bench):
+    session = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(session, exercise=bench, sets_count=2)
+
+    new_set = workouts_service.add_set_to_exercise(elog)
+
+    assert new_set.ordering == 2
+    assert elog.set_logs.count() == 3
+
+
+@pytest.mark.django_db
+def test_delete_set_removes_row_and_keeps_others(alice, bench):
+    session = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(session, exercise=bench, sets_count=3)
+    middle = elog.set_logs.all()[1]
+
+    workouts_service.delete_set(middle)
+
+    assert elog.set_logs.count() == 2
+    assert middle.id not in elog.set_logs.values_list("id", flat=True)
+
+
+@pytest.mark.django_db
+def test_delete_exercise_log_cascades_to_sets(alice, bench):
+    session = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(session, exercise=bench, sets_count=3)
+    set_ids = list(elog.set_logs.values_list("id", flat=True))
+
+    workouts_service.delete_exercise_log(elog)
+
+    assert session.exercise_logs.count() == 0
+    assert SetLog.objects.filter(id__in=set_ids).count() == 0

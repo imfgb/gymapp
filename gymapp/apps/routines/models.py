@@ -107,7 +107,7 @@ class RoutineExercise(models.Model):
         ordering = ["routine_day", "ordering", "id"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(target_reps_low__lte=models.F("target_reps_high")),
+                condition=models.Q(target_reps_low__lte=models.F("target_reps_high")),
                 name="routines_reps_low_lte_high",
             ),
         ]

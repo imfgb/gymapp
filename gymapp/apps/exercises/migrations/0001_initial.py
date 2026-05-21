@@ -176,7 +176,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="exercisealternative",
             constraint=models.CheckConstraint(
-                check=models.Q(("from_exercise", models.F("to_exercise")), _negated=True),
+                condition=models.Q(("from_exercise", models.F("to_exercise")), _negated=True),
                 name="exercises_alternative_not_self",
             ),
         ),

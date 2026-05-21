@@ -49,6 +49,27 @@
       "title": "Dashboard: today / week / history / PR highlights",
       "status": "done",
       "summary": "Replace the Phase 0 placeholder with real cards driven by routines + sessions + PRs."
+    },
+    {
+      "id": "phase2-session-live-edit",
+      "phase": 2,
+      "title": "Session live editing (add exercise/set on the fly + custom exercise)",
+      "status": "done",
+      "summary": "During an in-progress workout: pick or add a custom exercise mid-session, add another set to any exercise, delete sets/exercises. HTMX endpoints."
+    },
+    {
+      "id": "phase2-routine-crud",
+      "phase": 2,
+      "title": "User-facing routine CRUD",
+      "status": "queued",
+      "summary": "List/create/edit/delete routines + days + exercises in the UI, not just /admin/."
+    },
+    {
+      "id": "phase2-routine-generator",
+      "phase": 2,
+      "title": "Routine generator from split + muscle groups",
+      "status": "queued",
+      "summary": "Pick a split preset (PPL, Upper/Lower, Bro Split, Full Body) or a custom muscle-group plan; service generates RoutineDays + exercises balancing compound/isolation per training_style."
     }
   ]
 }

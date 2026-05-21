@@ -150,7 +150,7 @@ class ExerciseAlternative(models.Model):
                 name="exercises_unique_alternative_pair",
             ),
             models.CheckConstraint(
-                check=~models.Q(from_exercise=models.F("to_exercise")),
+                condition=~models.Q(from_exercise=models.F("to_exercise")),
                 name="exercises_alternative_not_self",
             ),
         ]

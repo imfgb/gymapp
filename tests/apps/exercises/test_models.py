@@ -14,6 +14,13 @@ from gymapp.apps.exercises.models import Exercise, ExerciseAlternative
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
 
+@pytest.fixture(autouse=True)
+def clean_catalog(db):
+    # The 0002_seed_catalog data migration populates 78 exercises; these tests
+    # need an empty table to assert exact counts and create specific slugs.
+    Exercise.objects.all().delete()
+
+
 @pytest.mark.django_db
 def test_visible_to_returns_globals_and_own_customs():
     alice = UserFactory(email="alice@example.com")
@@ -55,16 +62,26 @@ def test_visible_to_superuser_sees_everything():
 
 @pytest.mark.django_db
 def test_slug_unique_per_owner():
+    """The UniqueConstraint on (owner, slug) enforces no-duplicates per-user.
+
+    Note: SQLite (and PostgreSQL) treat NULLs as distinct in UNIQUE
+    constraints, so two `owner=NULL` rows with the same slug do *not* violate.
+    Global uniqueness is the seed loader's responsibility (it upserts), not
+    the database constraint's.
+    """
     eq = EquipmentFactory()
     alice = UserFactory(email="alice@example.com")
+    bob = UserFactory(email="bob@example.com")
 
     ExerciseFactory(slug="bench-press", owner=None, equipment=eq)
     # Same slug, different owner -> allowed.
-    ExerciseFactory(slug="bench-press", owner=alice, equipment=eq)
+    alice_one = ExerciseFactory(slug="my-bench", owner=alice, equipment=eq)
+    ExerciseFactory(slug="my-bench", owner=bob, equipment=eq)
+    assert alice_one.slug == "my-bench"  # sanity
 
-    # Same slug, same owner (None twice) -> rejected.
+    # Same slug, same non-null owner -> rejected by UniqueConstraint.
     with pytest.raises((IntegrityError, DBIntegrityError)):
-        Exercise.objects.create(slug="bench-press", name="Dup", equipment=eq, owner=None)
+        Exercise.objects.create(slug="my-bench", name="Dup", equipment=eq, owner=alice)
 
 
 @pytest.mark.django_db

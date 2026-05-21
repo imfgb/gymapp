@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Editar rutina · gymapp{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">Editar — {{ routine.name }}</h1>
+<form method="post" class="max-w-md space-y-4">
+  {% csrf_token %}
+  <label class="block">
+    <span class="text-sm text-slate-700">Nombre</span>
+    <input type="text" name="name" required maxlength="120" value="{{ routine.name }}"
+           class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-700">Estilo</span>
+    <select name="training_style" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+      {% for value, label in training_styles %}
+        <option value="{{ value }}" {% if routine.training_style == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-700">Notas</span>
+    <textarea name="notes" rows="3"
+              class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">{{ routine.notes }}</textarea>
+  </label>
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name="is_archived" {% if routine.is_archived %}checked{% endif %}>
+    Archivada (no aparece en la lista principal)
+  </label>
+  <div class="flex gap-2">
+    <button class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">Guardar</button>
+    <a href="{% url 'routines:detail' routine.id %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,102 @@
+{# A single RoutineDay card. Re-rendered after any of its exercises change. #}
+<article id="day-{{ day.id }}"
+         class="rounded-lg border border-slate-200 bg-white shadow-sm"
+         x-data="{ pickerOpen: false, search: '' }">
+  <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
+    <h2 class="text-lg font-medium">{{ day.label }}</h2>
+    <button type="button"
+            hx-post="{% url 'routines:day_delete' routine.id day.id %}"
+            hx-target="#day-{{ day.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="¿Borrar este día y todos sus ejercicios?"
+            class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+      Borrar día
+    </button>
+  </header>
+
+  <div class="divide-y divide-slate-100">
+    {% for rex in day.exercises.all %}
+      <form class="flex flex-wrap items-end gap-2 px-4 py-2"
+            hx-post="{% url 'routines:exercise_update' routine.id day.id rex.id %}"
+            hx-target="#day-{{ day.id }}"
+            hx-swap="outerHTML"
+            hx-trigger="change delay:400ms from:input">
+        {% csrf_token %}
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium">{{ rex.exercise.name }}</p>
+          <p class="text-xs text-slate-500">{{ rex.exercise.equipment.name }}</p>
+        </div>
+
+        <label class="text-xs text-slate-500">
+          <span class="block">Series</span>
+          <input type="number" name="target_sets" min="1" max="50" value="{{ rex.target_sets }}"
+                 class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
+        </label>
+        <label class="text-xs text-slate-500">
+          <span class="block">Reps min</span>
+          <input type="number" name="target_reps_low" min="1" max="100" value="{{ rex.target_reps_low }}"
+                 class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
+        </label>
+        <label class="text-xs text-slate-500">
+          <span class="block">Reps max</span>
+          <input type="number" name="target_reps_high" min="1" max="100" value="{{ rex.target_reps_high }}"
+                 class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
+        </label>
+        <label class="text-xs text-slate-500">
+          <span class="block">Peso (kg)</span>
+          <input type="number" name="target_weight_kg" step="0.5" min="0"
+                 value="{{ rex.target_weight_kg|default_if_none:'' }}"
+                 class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
+        </label>
+        <label class="text-xs text-slate-500">
+          <span class="block">Descanso (s)</span>
+          <input type="number" name="rest_seconds" min="15" max="600"
+                 value="{{ rex.rest_seconds|default_if_none:'' }}"
+                 placeholder="default"
+                 class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
+        </label>
+
+        <button type="button"
+                hx-post="{% url 'routines:exercise_delete' routine.id day.id rex.id %}"
+                hx-target="#day-{{ day.id }}"
+                hx-swap="outerHTML"
+                hx-confirm="¿Borrar este ejercicio?"
+                class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+          ✕
+        </button>
+      </form>
+    {% empty %}
+      <p class="px-4 py-3 text-sm text-slate-500">Sin ejercicios. Agrega uno abajo.</p>
+    {% endfor %}
+  </div>
+
+  <div class="border-t border-slate-100 p-3">
+    <button type="button" @click="pickerOpen = !pickerOpen"
+            class="text-sm text-slate-700 hover:underline">
+      <span x-show="!pickerOpen">+ Agregar ejercicio</span>
+      <span x-show="pickerOpen" x-cloak>Cerrar</span>
+    </button>
+    <div x-show="pickerOpen" x-cloak class="mt-2">
+      <input type="text" x-model="search" placeholder="Buscar…"
+             class="mb-2 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+      <ul class="max-h-60 overflow-y-auto divide-y divide-slate-100">
+        {% for ex in picker_exercises %}
+          <li x-show="search === '' || '{{ ex.name|escapejs|lower }}'.includes(search.toLowerCase())"
+              class="flex items-center justify-between gap-2 py-1.5">
+            <div class="min-w-0">
+              <p class="truncate text-sm">{{ ex.name }}</p>
+              <p class="text-xs text-slate-500">{{ ex.equipment.name }}</p>
+            </div>
+            <form hx-post="{% url 'routines:exercise_add' routine.id day.id %}"
+                  hx-target="#day-{{ day.id }}"
+                  hx-swap="outerHTML">
+              {% csrf_token %}
+              <input type="hidden" name="slug" value="{{ ex.slug }}">
+              <button class="rounded bg-slate-900 px-2 py-1 text-xs text-white hover:bg-slate-800">Agregar</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</article>

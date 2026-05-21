@@ -28,6 +28,7 @@ urlpatterns = [
         ),
         name="password_change_done",
     ),
+    path("routines/", include("gymapp.apps.routines.urls")),
     path("workouts/", include("gymapp.apps.workouts.urls")),
     path("prs/", include("gymapp.apps.prs.urls")),
     path("metrics/", include("gymapp.apps.metrics.urls")),

@@ -1,0 +1,19 @@
+{# Generator preview, rendered into #preset-preview via HTMX. #}
+{% if days %}
+  <div class="space-y-3">
+    {% for day in days %}
+      <div>
+        <p class="font-medium text-slate-900">{{ day.label }}</p>
+        <ul class="ml-4 list-disc text-xs text-slate-600">
+          {% for name, sets, lo, hi in day.exercises %}
+            <li>{{ name }} — {{ sets }}×{{ lo }}–{{ hi }}</li>
+          {% empty %}
+            <li class="list-none text-rose-700">No se encontraron ejercicios para los músculos pedidos.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>Sin días.</p>
+{% endif %}

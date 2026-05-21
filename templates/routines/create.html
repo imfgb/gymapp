@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Nueva rutina · gymapp{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-2xl font-semibold">Nueva rutina</h1>
+
+<form method="post" x-data="{ mode: 'manual' }" class="space-y-5">
+  {% csrf_token %}
+
+  <label class="block">
+    <span class="text-sm text-slate-700">Nombre</span>
+    <input type="text" name="name" required maxlength="120"
+           placeholder="p.ej. PPL 6 días"
+           class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+  </label>
+
+  <label class="block">
+    <span class="text-sm text-slate-700">Estilo</span>
+    <select name="training_style" id="training-style-select"
+            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+      {% for value, label in training_styles %}
+        <option value="{{ value }}" {% if value == default_style %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <fieldset class="space-y-2">
+    <legend class="text-sm text-slate-700">¿Cómo construirla?</legend>
+    <label class="flex items-start gap-2 rounded border border-slate-200 p-3"
+           :class="mode === 'manual' ? 'border-slate-900 bg-slate-50' : ''">
+      <input type="radio" name="mode" value="manual" x-model="mode" class="mt-1">
+      <div>
+        <span class="font-medium text-sm">Vacía (manual)</span>
+        <p class="text-xs text-slate-500">Crea la rutina y agrega días + ejercicios uno a uno.</p>
+      </div>
+    </label>
+    <label class="flex items-start gap-2 rounded border border-slate-200 p-3"
+           :class="mode === 'generate' ? 'border-slate-900 bg-slate-50' : ''">
+      <input type="radio" name="mode" value="generate" x-model="mode" class="mt-1">
+      <div>
+        <span class="font-medium text-sm">Generar automáticamente</span>
+        <p class="text-xs text-slate-500">Elige un split y la app la rellena con ejercicios. La puedes editar después.</p>
+      </div>
+    </label>
+  </fieldset>
+
+  <div x-show="mode === 'generate'" x-cloak class="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
+    <label class="block">
+      <span class="text-sm text-slate-700">Split</span>
+      <select name="preset" id="preset-select"
+              class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+        {% for value, label in preset_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button type="button"
+            hx-post="{% url 'routines:preview' %}"
+            hx-include="#preset-select, #training-style-select"
+            hx-target="#preset-preview"
+            hx-swap="innerHTML"
+            class="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+      Ver vista previa
+    </button>
+
+    <div id="preset-preview"
+         class="mt-2 rounded border border-dashed border-slate-200 p-3 text-sm text-slate-500">
+      Haz clic en “Ver vista previa” para ver qué ejercicios se generarán.
+    </div>
+  </div>
+
+  <div class="flex gap-2">
+    <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">
+      Crear
+    </button>
+    <a href="{% url 'routines:list' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

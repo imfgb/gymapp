@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ routine.name }} · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+  <div>
+    <a href="{% url 'routines:list' %}" class="text-sm text-slate-500 hover:underline">← Rutinas</a>
+    <h1 class="mt-1 text-2xl font-semibold">{{ routine.name }}</h1>
+    <p class="text-xs text-slate-500">{{ routine.get_training_style_display|default:routine.training_style }}</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="{% url 'routines:edit' routine.id %}"
+       class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+      Editar metadata
+    </a>
+    <form method="post" action="{% url 'routines:delete' routine.id %}"
+          onsubmit="return confirm('¿Borrar esta rutina?')">
+      {% csrf_token %}
+      <button class="rounded-md border border-rose-200 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50">Borrar</button>
+    </form>
+  </div>
+</header>
+
+<section id="days-list" class="space-y-4">
+  {% for day in routine.days.all %}
+    {% include "routines/partials/_day_card.html" with day=day routine=routine %}
+  {% empty %}
+    <p class="text-sm text-slate-500">Sin días aún. Agrega uno abajo.</p>
+  {% endfor %}
+</section>
+
+<form class="mt-4 flex items-center gap-2"
+      hx-post="{% url 'routines:day_add' routine.id %}"
+      hx-target="#days-list"
+      hx-swap="beforeend"
+      hx-on::after-request="if (event.detail.successful) event.target.reset();">
+  {% csrf_token %}
+  <input type="text" name="label" placeholder="Día (p.ej. Push A)"
+         class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm">
+  <button class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">+ Día</button>
+</form>
+{% endblock %}

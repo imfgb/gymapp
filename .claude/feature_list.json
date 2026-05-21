@@ -61,14 +61,14 @@
       "id": "phase2-routine-crud",
       "phase": 2,
       "title": "User-facing routine CRUD",
-      "status": "queued",
+      "status": "done",
       "summary": "List/create/edit/delete routines + days + exercises in the UI, not just /admin/."
     },
     {
       "id": "phase2-routine-generator",
       "phase": 2,
       "title": "Routine generator from split + muscle groups",
-      "status": "queued",
+      "status": "done",
       "summary": "Pick a split preset (PPL, Upper/Lower, Bro Split, Full Body) or a custom muscle-group plan; service generates RoutineDays + exercises balancing compound/isolation per training_style."
     }
   ]

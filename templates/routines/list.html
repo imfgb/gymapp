@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Rutinas · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+  <h1 class="text-2xl font-semibold">Rutinas</h1>
+  <div class="flex gap-2">
+    <a href="{% url 'routines:weekly_split' %}"
+       class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+      Split semanal
+    </a>
+    <a href="{% url 'routines:create' %}"
+       class="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800">
+      Nueva rutina
+    </a>
+  </div>
+</header>
+
+<ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+  {% for r in routines %}
+    <li class="flex items-center justify-between px-4 py-3">
+      <div>
+        <a class="font-medium hover:underline" href="{% url 'routines:detail' r.id %}">{{ r.name }}</a>
+        <p class="text-xs text-slate-500">
+          {{ r.days.count }} día{{ r.days.count|pluralize:"s" }} · {{ r.get_training_style_display|default:r.training_style }}
+        </p>
+      </div>
+      <a href="{% url 'routines:edit' r.id %}" class="text-sm text-slate-500 hover:underline">Editar</a>
+    </li>
+  {% empty %}
+    <li class="px-4 py-6 text-sm text-slate-500">
+      Aún no tienes rutinas. <a href="{% url 'routines:create' %}" class="underline">Crea la primera</a>.
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

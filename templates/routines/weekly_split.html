@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Split semanal · gymapp{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <a href="{% url 'routines:list' %}" class="text-sm text-slate-500 hover:underline">← Rutinas</a>
+  <h1 class="mt-1 text-2xl font-semibold">Split semanal</h1>
+  <p class="text-sm text-slate-500">Asigna un día de rutina a cada día de la semana. Deja “— descanso —” si no entrenas ese día.</p>
+</header>
+
+<div class="space-y-2">
+  {% for row in rows %}
+    <form method="post" action="{% url 'routines:weekly_split_assign' row.weekday %}"
+          class="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3">
+      {% csrf_token %}
+      <span class="w-24 text-sm font-medium">{{ row.label }}</span>
+      <select name="routine_day"
+              class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm">
+        <option value="">— descanso —</option>
+        {% for day in all_days %}
+          <option value="{{ day.id }}"
+                  {% if row.split and row.split.routine_day_id == day.id %}selected{% endif %}>
+            {{ day.routine.name }} :: {{ day.label }}
+          </option>
+        {% endfor %}
+      </select>
+      <button class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">Guardar</button>
+    </form>
+  {% endfor %}
+</div>
+{% endblock %}

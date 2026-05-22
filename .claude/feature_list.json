@@ -82,8 +82,8 @@
       "id": "phase2-substitution-scoring",
       "phase": 2,
       "title": "Substitution service multi-factor scoring",
-      "status": "queued",
-      "summary": "Rank exercise alternatives by muscle overlap, equipment availability, and fatigue. Currently returns unranked list."
+      "status": "done",
+      "summary": "Deterministic scorer ranks alternatives by primary/secondary muscle overlap (Jaccard), curated-graph bonus, equipment match/availability, and category. `ranked_alternatives()` powers a 'Cambiar' swap UI on the session exercise card (refuses once a set is completed)."
     },
     {
       "id": "phase2-warmup-generation",

@@ -42,6 +42,11 @@ urlpatterns = [
         name="add_set",
     ),
     path(
+        "<int:session_id>/exercises/<int:elog_id>/swap-options/",
+        views.swap_options_view,
+        name="swap_options",
+    ),
+    path(
         "<int:session_id>/exercises/<int:elog_id>/swap/",
         views.swap_exercise_view,
         name="swap_exercise",

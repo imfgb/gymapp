@@ -275,7 +275,9 @@ Detail → `ROADMAP.md`.
 - **Custom exercise from the routine editor**: "Crear nuevo" tab → `routines:exercise_add_custom`; shared creator `services.exercise_library.create_custom_exercise`.
 - **Bug fixes**: reps forced integer (client strip + server coerce); set-delete was blocked by the Django Debug Toolbar's expanded panel covering right-aligned buttons (fixed with `DEBUG_TOOLBAR_CONFIG={"SHOW_COLLAPSED": True}`); fixed multi-line `{# #}` comments leaking as visible text (now guarded by tests).
 
-Phase 2 features still queued: **substitution-scoring (next)**, warmup-generation, monthly-goals.
+- **substitution-scoring** (2026-05-22): deterministic multi-factor scorer in `services/substitution` (primary/secondary muscle Jaccard overlap, curated-graph bonus, equipment match/availability, category). `ranked_alternatives()` powers a "Cambiar" swap UI on the session exercise card → ranked list → swap (refuses once a set is completed). Satisfies the Phase 2 exit criterion "swap exercise returns ranked alternatives".
+
+Phase 2 features still queued: **warmup-generation (next)**, monthly-goals.
 
 **Bug fixes applied (2026-05-21):**
 

@@ -49,8 +49,9 @@ def test_start_session_from_routine_day_populates_logs(alice, bench):
     assert session.exercise_logs.count() == 1
     elog = session.exercise_logs.first()
     assert elog.exercise_id == bench.id
-    assert elog.set_logs.count() == 3
-    for s in elog.set_logs.all():
+    working = elog.set_logs.filter(is_warmup=False)
+    assert working.count() == 3
+    for s in working:
         assert s.weight_kg == Decimal("100.00")
         assert s.reps == 6
         assert s.completed_at is None
@@ -379,3 +380,47 @@ def test_add_warmups_barbell_snaps_to_loadable_5kg(alice, bench):
     weights = [w.weight_kg for w in created]
     assert all(w % Decimal("5") == 0 for w in weights), weights
     assert all(w < Decimal("90") for w in weights)
+
+
+@pytest.mark.django_db
+def test_start_session_auto_warms_up_barbell(alice, bench):
+    """Barbell lifts with a known working weight get warm-ups on session start."""
+    routine = Routine.objects.create(owner=alice, name="PPL")
+    day = RoutineDay.objects.create(routine=routine, label="Push A")
+    RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=bench,
+        ordering=0,
+        target_sets=3,
+        target_reps_low=3,
+        target_reps_high=5,
+        target_weight_kg=Decimal("100"),
+    )
+
+    session = workouts_service.start_session(alice, routine_day=day)
+
+    elog = session.exercise_logs.get(exercise=bench)
+    assert elog.set_logs.filter(is_warmup=True).count() == 3
+    assert elog.set_logs.filter(is_warmup=False).count() == 3
+
+
+@pytest.mark.django_db
+def test_start_session_no_auto_warmup_for_dumbbell(alice):
+    """Non-barbell work is left warm-up-free until the user taps Calentamiento."""
+    db_ex = ExerciseFactory(slug="db-press", equipment=EquipmentFactory(slug="dumbbell"))
+    routine = Routine.objects.create(owner=alice, name="R")
+    day = RoutineDay.objects.create(routine=routine, label="D")
+    RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=db_ex,
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+        target_weight_kg=Decimal("20"),
+    )
+
+    session = workouts_service.start_session(alice, routine_day=day)
+
+    elog = session.exercise_logs.get(exercise=db_ex)
+    assert elog.set_logs.filter(is_warmup=True).count() == 0

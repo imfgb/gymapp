@@ -89,8 +89,8 @@
       "id": "phase2-warmup-generation",
       "phase": 2,
       "title": "Warm-up set generation",
-      "status": "queued",
-      "summary": "Auto-prepend is_warmup=True SetLogs based on working-set load (e.g. 50%×5, 70%×3, 85%×1 before top sets)."
+      "status": "done",
+      "summary": "Deterministic warmup_scheme (services/warmup): 40/60/80% ramp of the working weight, rounded to 2.5 kg, floored at the bar, never >= working. Per-exercise 'Calentamiento' button prepends is_warmup SetLogs (idempotent regen); warm-ups excluded from progress + PRs."
     },
     {
       "id": "phase2-monthly-goals",

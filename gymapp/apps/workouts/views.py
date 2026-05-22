@@ -310,6 +310,17 @@ def add_set_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpRes
 
 @login_required
 @require_POST
+def add_warmups_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
+    """HTMX: generate warm-up sets for an exercise from its working weight."""
+    sess = _require_active_session(request.user, session_id)
+    elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
+    workouts_service.add_warmups_to_exercise(elog)
+    elog.refresh_from_db()
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
 def delete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
     """HTMX: delete a SetLog and return the parent card."""
     sess = _require_active_session(request.user, session_id)

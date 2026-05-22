@@ -276,8 +276,9 @@ Detail → `ROADMAP.md`.
 - **Bug fixes**: reps forced integer (client strip + server coerce); set-delete was blocked by the Django Debug Toolbar's expanded panel covering right-aligned buttons (fixed with `DEBUG_TOOLBAR_CONFIG={"SHOW_COLLAPSED": True}`); fixed multi-line `{# #}` comments leaking as visible text (now guarded by tests).
 
 - **substitution-scoring** (2026-05-22): deterministic multi-factor scorer in `services/substitution` (primary/secondary muscle Jaccard overlap, curated-graph bonus, equipment match/availability, category). `ranked_alternatives()` powers a "Cambiar" swap UI on the session exercise card → ranked list → swap (refuses once a set is completed). Satisfies the Phase 2 exit criterion "swap exercise returns ranked alternatives".
+- **warmup-generation** (2026-05-22): `services/warmup.warmup_scheme()` ramps 40/60/80% of the working weight, rounded to 2.5 kg, floored at the bar, never ≥ working. Per-exercise "Calentamiento" button (`workouts:add_warmups`) prepends `is_warmup` SetLogs (idempotent regen). Warm-ups stay excluded from the progress counter and PRs.
 
-Phase 2 features still queued: **warmup-generation (next)**, monthly-goals.
+Phase 2 features still queued: **monthly-goals (last one)**.
 
 **Bug fixes applied (2026-05-21):**
 

@@ -184,6 +184,20 @@ def test_swap_options_blocked_after_completed_set(client_alice, clean_catalog):
 
 
 @pytest.mark.django_db
+def test_add_warmups_view_prepends_warmup_sets(client_alice):
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=ExerciseFactory(), sets_count=2)
+    elog.set_logs.update(weight_kg=100, reps=5)
+
+    resp = client.post(reverse("workouts:add_warmups", args=[sess.pk, elog.pk]))
+
+    assert resp.status_code == 200
+    assert b"warm-up" in resp.content
+    assert elog.set_logs.filter(is_warmup=True).count() == 3
+
+
+@pytest.mark.django_db
 def test_delete_set_removes_row_and_renumbers(client_alice):
     """Deleting a middle set removes it and keeps sibling ordering contiguous."""
     client, alice = client_alice

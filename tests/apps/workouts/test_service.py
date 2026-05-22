@@ -323,3 +323,44 @@ def test_delete_exercise_log_cascades_to_sets(alice, bench):
 
     assert session.exercise_logs.count() == 0
     assert SetLog.objects.filter(id__in=set_ids).count() == 0
+
+
+@pytest.mark.django_db
+def test_add_warmups_prepends_and_renumbers(alice, bench):
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=2)
+    elog.set_logs.update(weight_kg=Decimal("100"), reps=5)
+
+    created = workouts_service.add_warmups_to_exercise(elog)
+
+    assert len(created) == 3
+    warmups = list(elog.set_logs.filter(is_warmup=True).order_by("ordering"))
+    assert [w.ordering for w in warmups] == [0, 1, 2]
+    assert all(w.weight_kg < Decimal("100") for w in warmups)
+    working = list(elog.set_logs.filter(is_warmup=False).order_by("ordering"))
+    assert [s.ordering for s in working] == [3, 4]
+
+
+@pytest.mark.django_db
+def test_add_warmups_is_idempotent(alice, bench):
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=2)
+    elog.set_logs.update(weight_kg=Decimal("100"), reps=5)
+
+    workouts_service.add_warmups_to_exercise(elog)
+    workouts_service.add_warmups_to_exercise(elog)
+
+    assert elog.set_logs.filter(is_warmup=True).count() == 3
+    assert elog.set_logs.count() == 5
+
+
+@pytest.mark.django_db
+def test_add_warmups_noop_without_working_weight(alice, bench):
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=2)
+
+    created = workouts_service.add_warmups_to_exercise(elog)
+
+    assert created == []
+    assert elog.set_logs.filter(is_warmup=True).count() == 0
+    assert [s.ordering for s in elog.set_logs.order_by("ordering")] == [0, 1]

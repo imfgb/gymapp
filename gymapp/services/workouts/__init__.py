@@ -200,6 +200,42 @@ def add_set_to_exercise(exercise_log: ExerciseLog) -> SetLog:
 
 
 @transaction.atomic
+def add_warmups_to_exercise(exercise_log: ExerciseLog) -> list[SetLog]:
+    """(Re)generate warm-up sets for an exercise from its heaviest working set.
+
+    Idempotent: existing warm-ups are dropped and rebuilt, so re-running after
+    changing the working weight refreshes them. Warm-ups are inserted before the
+    working sets and the whole list is renumbered contiguously. Returns the new
+    warm-up SetLogs (empty if the working weight is unknown / too light).
+    """
+    from gymapp.services.warmup import warmup_scheme
+
+    exercise_log.set_logs.filter(is_warmup=True).delete()
+    working = list(exercise_log.set_logs.filter(is_warmup=False).order_by("ordering", "id"))
+    top_weight = max((s.weight_kg for s in working if s.weight_kg is not None), default=None)
+
+    scheme = warmup_scheme(top_weight)
+    created: list[SetLog] = []
+    for idx, (weight, reps) in enumerate(scheme):
+        created.append(
+            SetLog.objects.create(
+                exercise_log=exercise_log,
+                ordering=idx,
+                weight_kg=weight,
+                reps=reps,
+                is_warmup=True,
+            )
+        )
+    offset = len(created)
+    for j, set_log in enumerate(working):
+        new_order = offset + j
+        if set_log.ordering != new_order:
+            set_log.ordering = new_order
+            set_log.save(update_fields=["ordering"])
+    return created
+
+
+@transaction.atomic
 def delete_set(set_log: SetLog) -> None:
     """Remove a SetLog and renumber siblings so ordering stays contiguous."""
     elog = set_log.exercise_log

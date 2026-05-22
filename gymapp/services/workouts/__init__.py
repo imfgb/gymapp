@@ -208,13 +208,26 @@ def add_warmups_to_exercise(exercise_log: ExerciseLog) -> list[SetLog]:
     working sets and the whole list is renumbered contiguously. Returns the new
     warm-up SetLogs (empty if the working weight is unknown / too light).
     """
+    from decimal import Decimal
+
     from gymapp.services.warmup import warmup_scheme
 
     exercise_log.set_logs.filter(is_warmup=True).delete()
     working = list(exercise_log.set_logs.filter(is_warmup=False).order_by("ordering", "id"))
     top_weight = max((s.weight_kg for s in working if s.weight_kg is not None), default=None)
 
-    scheme = warmup_scheme(top_weight)
+    # A plate-loaded bar only moves in 2× the smallest plate (the user's smallest
+    # plate is 2.5 kg → 5 kg total steps), so warm-up weights must snap to that to
+    # be loadable. Non-bar equipment (dumbbell/machine/cable) uses 2.5 kg targets.
+    plate_loaded = {
+        "barbell": (Decimal("5"), Decimal("20")),
+        "smith": (Decimal("5"), Decimal("20")),
+        "ez-bar": (Decimal("5"), Decimal("10")),
+    }
+    increment, bar = plate_loaded.get(
+        exercise_log.exercise.equipment.slug, (Decimal("2.5"), Decimal("0"))
+    )
+    scheme = warmup_scheme(top_weight, bar_weight=bar, increment=increment)
     created: list[SetLog] = []
     for idx, (weight, reps) in enumerate(scheme):
         created.append(

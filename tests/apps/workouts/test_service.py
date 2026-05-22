@@ -364,3 +364,18 @@ def test_add_warmups_noop_without_working_weight(alice, bench):
     assert created == []
     assert elog.set_logs.filter(is_warmup=True).count() == 0
     assert [s.ordering for s in elog.set_logs.order_by("ordering")] == [0, 1]
+
+
+@pytest.mark.django_db
+def test_add_warmups_barbell_snaps_to_loadable_5kg(alice, bench):
+    """Barbell warm-ups must be loadable with a 2.5 kg smallest plate (5 kg
+    total steps), not 2.5 kg, so e.g. 90 kg -> 35/55/70 not 36/54/72."""
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=1)
+    elog.set_logs.update(weight_kg=Decimal("90"), reps=3)
+
+    created = workouts_service.add_warmups_to_exercise(elog)
+
+    weights = [w.weight_kg for w in created]
+    assert all(w % Decimal("5") == 0 for w in weights), weights
+    assert all(w < Decimal("90") for w in weights)

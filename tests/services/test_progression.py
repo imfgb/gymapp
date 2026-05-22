@@ -320,14 +320,14 @@ def test_start_session_prefills_sets_from_progression(user_powerlifting, barbell
         target_weight_kg=Decimal("100"),
     )
 
-    # Session 1 — complete all sets successfully
+    # Session 1 — complete all working sets successfully
     s1 = workouts_service.start_session(user_powerlifting, routine_day=day)
-    for s in s1.exercise_logs.first().set_logs.all():
+    for s in s1.exercise_logs.first().set_logs.filter(is_warmup=False):
         workouts_service.complete_set(s, weight_kg=Decimal("100"), reps=5)
     workouts_service.finish_session(s1)
 
-    # Session 2 — sets should be pre-filled at 105 kg (100 + 5 increment)
+    # Session 2 — working sets should be pre-filled at 105 kg (100 + 5 increment)
     s2 = workouts_service.start_session(user_powerlifting, routine_day=day)
-    sets = list(s2.exercise_logs.first().set_logs.order_by("ordering"))
+    sets = list(s2.exercise_logs.first().set_logs.filter(is_warmup=False).order_by("ordering"))
     assert all(s.weight_kg == Decimal("105") for s in sets)
     assert all(s.reps == 5 for s in sets)

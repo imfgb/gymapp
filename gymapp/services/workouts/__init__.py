@@ -25,6 +25,11 @@ from gymapp.apps.workouts.models import (
     WorkoutStatus,
 )
 
+# Equipment whose exercises get warm-ups auto-generated on session start.
+# Plate-loaded compound bars; accessory/isolation work is left to the manual
+# "Calentamiento" button.
+AUTO_WARMUP_EQUIPMENT = frozenset({"barbell", "smith"})
+
 
 @transaction.atomic
 def start_session(
@@ -53,7 +58,7 @@ def start_session(
         from gymapp.services.progression import recommend_next
 
         for idx, rex in enumerate(
-            routine_day.exercises.select_related("exercise").order_by("ordering", "id")
+            routine_day.exercises.select_related("exercise__equipment").order_by("ordering", "id")
         ):
             elog = ExerciseLog.objects.create(session=session, exercise=rex.exercise, ordering=idx)
             rec = recommend_next(
@@ -70,6 +75,11 @@ def start_session(
                     weight_kg=rec.weight_kg,
                     reps=rec.reps,
                 )
+            # Auto-generate warm-ups for barbell lifts that have a known working
+            # weight; lighter accessory work stays warm-up-free unless the user
+            # taps "Calentamiento" manually.
+            if rec.weight_kg is not None and rex.exercise.equipment.slug in AUTO_WARMUP_EQUIPMENT:
+                add_warmups_to_exercise(elog)
 
     return session
 

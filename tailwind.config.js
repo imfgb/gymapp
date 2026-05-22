@@ -7,7 +7,13 @@ module.exports = {
     "./static/src/js/**/*.js",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        // Smart Fit brand: vivid yellow on near-black.
+        brand: { DEFAULT: "#F5E000", dark: "#D8C400" },
+        ink: "#0B0B0B",
+      },
+    },
   },
   plugins: [require("@tailwindcss/forms")],
 };

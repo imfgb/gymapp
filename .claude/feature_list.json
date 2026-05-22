@@ -33,7 +33,7 @@
       "id": "phase1-prs",
       "phase": 1,
       "title": "PR auto-detection + manual override",
-      "status": "in_progress",
+      "status": "done",
       "summary": "PersonalRecord model; signal/service that updates PRs when a SetLog is completed; PR list + edit views."
     },
     {
@@ -70,6 +70,34 @@
       "title": "Routine generator from split + muscle groups",
       "status": "done",
       "summary": "Pick a split preset (PPL, Upper/Lower, Bro Split, Full Body) or a custom muscle-group plan; service generates RoutineDays + exercises balancing compound/isolation per training_style."
+    },
+    {
+      "id": "phase2-progression-service",
+      "phase": 2,
+      "title": "Progression service (linear + double progression)",
+      "status": "done",
+      "summary": "DeterministicLinearProgression (powerlifting) and DeterministicDoubleProgression (bodybuilding/powerbuilding). recommend_next() wired into start_session so every working set is pre-filled with weight×reps from the last completed session."
+    },
+    {
+      "id": "phase2-substitution-scoring",
+      "phase": 2,
+      "title": "Substitution service multi-factor scoring",
+      "status": "queued",
+      "summary": "Rank exercise alternatives by muscle overlap, equipment availability, and fatigue. Currently returns unranked list."
+    },
+    {
+      "id": "phase2-warmup-generation",
+      "phase": 2,
+      "title": "Warm-up set generation",
+      "status": "queued",
+      "summary": "Auto-prepend is_warmup=True SetLogs based on working-set load (e.g. 50%×5, 70%×3, 85%×1 before top sets)."
+    },
+    {
+      "id": "phase2-monthly-goals",
+      "phase": 2,
+      "title": "Monthly goals",
+      "status": "queued",
+      "summary": "MonthlyGoal model (volume / frequency / weight targets). Dashboard card showing progress toward goal."
     }
   ]
 }

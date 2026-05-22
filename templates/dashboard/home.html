@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Inicio · gymapp{% endblock %}
+{% block title %}Inicio · Smart Fit Altama{% endblock %}
 
 {% block content %}
 <header class="mb-6">
   <h1 class="text-2xl font-semibold">Hola, {{ user.email|cut:"@gmail.com" }}.</h1>
-  <p class="text-sm text-slate-500">{{ today_split.routine_day.routine.name|default:"" }}</p>
+  <p class="text-sm text-slate-500">{{ today_routine_day.routine.name|default:"" }}</p>
 </header>
 
 {# ============ TODAY ============ #}
@@ -13,21 +13,73 @@
   {% if in_progress %}
     <p class="mb-3 text-lg font-medium">Tienes un entrenamiento en curso.</p>
     <a href="{% url 'workouts:session' in_progress.id %}"
-       class="inline-block rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-400">
+       class="inline-block rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
       Continuar entrenamiento
     </a>
-  {% elif today_split and today_split.routine_day %}
-    <p class="mb-3 text-lg font-medium">{{ today_split.routine_day.label }}</p>
-    <p class="mb-3 text-sm text-slate-500">{{ today_split.routine_day.routine.name }}</p>
-    <form method="post" action="{% url 'workouts:start' %}">
+  {% elif today_skipped %}
+    <p class="mb-3 text-lg font-medium">Marcaste que hoy no irás al gym 🛌</p>
+    <p class="mb-3 text-sm text-slate-500">Tu plan de la semana se recorrió un día.</p>
+    <form method="post" action="{% url 'routines:skip_today' %}">
       {% csrf_token %}
-      <input type="hidden" name="routine_day" value="{{ today_split.routine_day.id }}">
-      <button class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-        Iniciar entrenamiento
+      <button class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        Cambié de opinión, sí iré
       </button>
     </form>
   {% else %}
-    <p class="text-slate-700">Día de descanso 🙌</p>
+    {% if done_today %}
+      <p class="mb-3 text-lg font-medium text-emerald-700">✅ Ya cumpliste hoy con tu entrenamiento 💪</p>
+    {% elif today_routine_day %}
+      <p class="mb-3 text-lg font-medium">{{ today_routine_day.label }}</p>
+      <p class="mb-3 text-sm text-slate-500">{{ today_routine_day.routine.name }}</p>
+      <div class="flex flex-wrap gap-2">
+        <form method="post" action="{% url 'workouts:start' %}">
+          {% csrf_token %}
+          <input type="hidden" name="routine_day" value="{{ today_routine_day.id }}">
+          <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+            Iniciar entrenamiento
+          </button>
+        </form>
+        <form method="post" action="{% url 'routines:skip_today' %}">
+          {% csrf_token %}
+          <button class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+            Hoy no iré al gym
+          </button>
+        </form>
+      </div>
+    {% else %}
+      <p class="mb-3 text-slate-700">Hoy no tienes nada agendado 🙌</p>
+    {% endif %}
+
+    {# Start any active routine; this also sets today's slot in the weekly split. #}
+    {% if startable_routines %}
+      <form method="post" action="{% url 'workouts:start' %}"
+            class="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
+        {% csrf_token %}
+        <input type="hidden" name="set_today_split" value="1">
+        <label class="text-xs text-slate-500">
+          <span class="mb-1 block">{% if done_today %}¿Otra sesión?{% elif today_routine_day %}O inicia otra rutina{% else %}Elige una rutina{% endif %}</span>
+          <select name="routine_day"
+                  class="block w-56 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900">
+            {% for r in startable_routines %}
+              {% if r.days.all %}
+                <optgroup label="{{ r.name }}">
+                  {% for d in r.days.all %}
+                    <option value="{{ d.id }}">{{ d.label }}</option>
+                  {% endfor %}
+                </optgroup>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </label>
+        <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+          Iniciar
+        </button>
+      </form>
+    {% else %}
+      <p class="mt-3 text-sm text-slate-500">
+        No tienes rutinas activas. <a href="{% url 'routines:create' %}" class="underline">Crea una</a>.
+      </p>
+    {% endif %}
   {% endif %}
 </section>
 
@@ -37,11 +89,13 @@
   <ul class="grid grid-cols-2 gap-2 md:grid-cols-7">
     {% for day in week_view %}
       <li class="rounded-md border p-3 text-sm
-                 {% if day.is_today %}border-slate-900 bg-slate-900 text-white{% else %}border-slate-200 bg-white{% endif %}">
+                 {% if day.is_today %}border-brand bg-brand text-ink{% elif day.is_skipped %}border-slate-200 bg-slate-100{% else %}border-slate-200 bg-white{% endif %}">
         <p class="text-xs uppercase">{{ day.weekday_label|slice:":3" }}</p>
         <p class="mt-1 font-medium">
-          {% if day.split and day.split.routine_day %}
-            {{ day.split.routine_day.label }}
+          {% if day.is_skipped %}
+            <span class="text-slate-400">No iré 🛌</span>
+          {% elif day.routine_day %}
+            {{ day.routine_day.label }}
           {% else %}
             <span class="{% if not day.is_today %}text-slate-400{% endif %}">Descanso</span>
           {% endif %}

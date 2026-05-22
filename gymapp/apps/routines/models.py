@@ -12,6 +12,7 @@ upsert on weekday).
 
 Weekday integer: 0=Mon … 6=Sun (Python `datetime.weekday()` convention).
 """
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -50,7 +51,9 @@ class Routine(OwnedMixin, TimestampedModel):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
-            models.UniqueConstraint(fields=["owner", "name"], name="routines_unique_name_per_owner"),
+            models.UniqueConstraint(
+                fields=["owner", "name"], name="routines_unique_name_per_owner"
+            ),
         ]
 
     def __str__(self) -> str:
@@ -76,12 +79,8 @@ class RoutineDay(TimestampedModel):
 
 
 class RoutineExercise(models.Model):
-    routine_day = models.ForeignKey(
-        RoutineDay, on_delete=models.CASCADE, related_name="exercises"
-    )
-    exercise = models.ForeignKey(
-        Exercise, on_delete=models.PROTECT, related_name="routine_uses"
-    )
+    routine_day = models.ForeignKey(RoutineDay, on_delete=models.CASCADE, related_name="exercises")
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name="routine_uses")
     ordering = models.PositiveSmallIntegerField(default=0)
 
     target_sets = models.PositiveSmallIntegerField(
@@ -93,9 +92,7 @@ class RoutineExercise(models.Model):
     target_reps_high = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
-    target_weight_kg = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True
-    )
+    target_weight_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     rest_seconds = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -114,6 +111,28 @@ class RoutineExercise(models.Model):
 
     def __str__(self) -> str:
         return f"{self.routine_day.label} :: {self.exercise.name} ({self.target_sets}×)"
+
+
+class SkippedDay(OwnedMixin, TimestampedModel):
+    """A specific calendar date the user marked as 'no gym'.
+
+    The recurring `WeeklySplit` is the user's intent; a `SkippedDay` is a one-off
+    override. The dashboard uses it to slide the week's planned workouts forward
+    so a skipped day's session isn't lost — it moves to the next open day.
+    """
+
+    date = models.DateField(db_index=True)
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "date"], name="routines_unique_skipped_day_per_owner"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.owner.email} skipped {self.date}"
 
 
 class WeeklySplit(TimestampedModel):

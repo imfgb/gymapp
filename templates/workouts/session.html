@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Entrenamiento · gymapp{% endblock %}
+{% block title %}Entrenamiento · Smart Fit Altama{% endblock %}
 
 {% block content %}
-<header class="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+<header class="mb-6 flex flex-wrap items-baseline justify-between gap-3"
+        x-data="sessionProgress()" @htmx:after-settle.window="tick++">
   <div>
     <h1 class="text-2xl font-semibold">
       {% if session.source_routine_day %}
@@ -13,18 +14,41 @@
     </h1>
     <p class="text-sm text-slate-500">
       Iniciado {{ session.started_at|date:"l d M, H:i" }}
-      · <span id="progress-counter">{{ progress.completed }}</span>/<span>{{ progress.total }}</span> series
+      · <span x-text="done">{{ progress.completed }}</span>/<span x-text="total">{{ progress.total }}</span> series
     </p>
   </div>
 
   {% if session.is_active %}
-    <form method="post" action="{% url 'workouts:finish' session.id %}">
-      {% csrf_token %}
-      <button type="submit"
+    <div>
+      <button type="button"
+              @click="confirming = true"
+              x-show="!confirming"
               class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
         Terminar entrenamiento
       </button>
-    </form>
+      <div x-show="confirming" x-cloak
+           class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+        <p class="text-sm text-amber-800">
+          <span x-show="remaining > 0">
+            Quedan <strong x-text="remaining"></strong> series sin completar.
+          </span>
+          ¿Seguro que quieres terminar?
+        </p>
+        <div class="flex gap-2">
+          <form method="post" action="{% url 'workouts:finish' session.id %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">
+              Sí, terminar
+            </button>
+          </form>
+          <button type="button" @click="confirming = false"
+                  class="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
+            No, seguir
+          </button>
+        </div>
+      </div>
+    </div>
   {% else %}
     <span class="rounded-md bg-slate-200 px-3 py-1 text-sm text-slate-700">
       {{ session.get_status_display }}
@@ -32,20 +56,41 @@
   {% endif %}
 </header>
 
-{# Rest timer — Alpine. Triggered by `rest-timer:start` (set complete handler). #}
-<div x-data="restTimer({{ rest_seconds_default }})"
-     x-init="$nextTick(() => window.addEventListener('rest-timer:start', e => start(e.detail?.seconds)))"
-     x-show="active"
-     x-cloak
-     class="sticky top-2 z-10 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 shadow-sm">
-  <div class="flex items-center justify-between">
-    <div>
-      <p class="text-xs uppercase tracking-wide text-amber-700">Descanso</p>
-      <p class="text-2xl font-semibold tabular-nums" x-text="display"></p>
+{% if session.is_active %}
+{# One-tap opt-in for browser notifications (best-effort; hidden where unsupported). #}
+<div x-data="notifyOptIn()" x-show="showButton" x-cloak class="mb-3">
+  <button type="button" @click="enable()"
+          class="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+    🔔 Activar aviso de descanso
+  </button>
+</div>
+{% endif %}
+
+{# Rest timer — Alpine. Persists endsAt in localStorage so it survives reload/lock. #}
+<div x-data="restTimer({{ rest_seconds_default }}, '{{ session.id }}')"
+     x-effect="if (ready && !notified) { notified = true; alertDone(); }"
+     x-cloak>
+  {# Resting — amber countdown #}
+  <div x-show="resting"
+       class="sticky top-2 z-10 mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 shadow-sm">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-wide text-amber-700">Descanso</p>
+        <p class="text-2xl font-semibold tabular-nums" x-text="display"></p>
+      </div>
+      <div class="flex gap-2">
+        <button @click="add(30)" class="rounded bg-amber-100 px-2 py-1 text-sm">+30s</button>
+        <button @click="dismiss()" class="rounded bg-amber-600 px-3 py-1 text-sm text-white">Saltar</button>
+      </div>
     </div>
-    <div class="flex gap-2">
-      <button @click="add(30)" class="rounded bg-amber-100 px-2 py-1 text-sm">+30s</button>
-      <button @click="stop()" class="rounded bg-amber-600 px-3 py-1 text-sm text-white">Saltar</button>
+  </div>
+
+  {# Ready — green "go" banner #}
+  <div x-show="ready"
+       class="sticky top-2 z-10 mb-4 rounded-lg border border-emerald-300 bg-emerald-50 p-3 shadow-sm">
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-xl font-semibold text-emerald-800">💪 ¡Dale a la serie!</p>
+      <button @click="dismiss()" class="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white">Ok</button>
     </div>
   </div>
 </div>
@@ -60,7 +105,7 @@
 
 {# ===== ADD EXERCISE PICKER (only while session is active) ===== #}
 {% if session.is_active %}
-<section class="mt-6" x-data="exercisePicker()">
+<section class="mt-6" x-data="exercisePicker()" @exercise-added.window="open = false; search = ''">
   <button type="button"
           @click="open = !open"
           class="w-full rounded-lg border-2 border-dashed border-slate-300 px-4 py-3 text-sm font-medium text-slate-700 hover:border-slate-500 hover:bg-slate-50">
@@ -97,11 +142,11 @@
             <form hx-post="{% url 'workouts:add_exercise' session.id %}"
                   hx-target="#exercises-list"
                   hx-swap="beforeend"
-                  hx-on::after-request="if (event.detail.successful) { $root.__x.$data.open = false; $root.__x.$data.search = ''; }">
+                  hx-on::after-request="if (event.detail.successful) window.dispatchEvent(new Event('exercise-added'))">
               {% csrf_token %}
               <input type="hidden" name="slug" value="{{ ex.slug }}">
               <input type="hidden" name="sets_count" value="3">
-              <button class="rounded-md bg-slate-900 px-3 py-1 text-xs text-white hover:bg-slate-800">Agregar</button>
+              <button class="rounded-md bg-brand px-3 py-1 text-xs text-ink hover:bg-brand-dark">Agregar</button>
             </form>
           </li>
         {% endfor %}
@@ -152,7 +197,7 @@
                  class="mt-1 block w-20 rounded-md border border-slate-300 px-3 py-2 text-sm">
         </label>
 
-        <button class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">
+        <button class="rounded-md bg-brand px-3 py-2 text-sm text-ink hover:bg-brand-dark">
           Crear y agregar
         </button>
       </form>
@@ -165,31 +210,125 @@
   function exercisePicker() {
     return { open: false, tab: 'pick', search: '' };
   }
-  function restTimer(defaultSeconds) {
+  // Live working-set progress, recomputed from the DOM after every HTMX swap so
+  // the header counter and finish confirmation never need a page reload.
+  function sessionProgress() {
     return {
-      remaining: 0,
+      confirming: false,
+      tick: 0,
+      get done() { this.tick; return document.querySelectorAll('[data-working="1"][data-complete="1"]').length; },
+      get total() { this.tick; return document.querySelectorAll('[data-working="1"]').length; },
+      get remaining() { return Math.max(0, this.total - this.done); },
+    };
+  }
+  function notifyOptIn() {
+    const supported = "Notification" in window;
+    return {
+      supported,
+      perm: supported ? Notification.permission : "denied",
+      get showButton() { return this.supported && this.perm === "default"; },
+      async enable() {
+        try { this.perm = await Notification.requestPermission(); } catch (e) { this.perm = "denied"; }
+      },
+    };
+  }
+
+  function restTimer(defaultSeconds, sessionKey) {
+    return {
       defaultSeconds: defaultSeconds,
-      active: false,
-      tick: null,
+      storageKey: "restTimer:" + sessionKey,
+      endsAt: null,
+      now: Date.now(),
+      notified: false,
+      audioCtx: null,
+
+      init() {
+        const saved = parseInt(localStorage.getItem(this.storageKey) || "", 10);
+        if (!isNaN(saved)) {
+          this.endsAt = saved;
+          // Already finished while we were away: don't re-alert on load.
+          if (Date.now() >= saved) this.notified = true;
+        }
+        window.addEventListener("rest-timer:start", (e) => this.start(e.detail && e.detail.seconds));
+        setInterval(() => { this.now = Date.now(); }, 250);
+        // Snap to the real time the instant the tab is shown again (unlock/return).
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) this.now = Date.now();
+        });
+      },
+
+      get phase() {
+        if (this.endsAt == null) return "idle";
+        return this.now < this.endsAt ? "resting" : "ready";
+      },
+      get resting() { return this.phase === "resting"; },
+      get ready() { return this.phase === "ready"; },
+      get remaining() {
+        if (this.endsAt == null) return 0;
+        return Math.max(0, Math.round((this.endsAt - this.now) / 1000));
+      },
       get display() {
         const m = Math.floor(this.remaining / 60);
         const s = String(this.remaining % 60).padStart(2, "0");
         return `${m}:${s}`;
       },
-      start(seconds) {
-        this.remaining = seconds || this.defaultSeconds;
-        this.active = true;
-        clearInterval(this.tick);
-        this.tick = setInterval(() => {
-          this.remaining -= 1;
-          if (this.remaining <= 0) {
-            this.stop();
-            try { new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=").play().catch(()=>{}); } catch (e) {}
-          }
-        }, 1000);
+
+      _persist() {
+        if (this.endsAt == null) localStorage.removeItem(this.storageKey);
+        else localStorage.setItem(this.storageKey, String(this.endsAt));
       },
-      add(seconds) { this.remaining += seconds; },
-      stop() { clearInterval(this.tick); this.active = false; this.remaining = 0; },
+      start(seconds) {
+        const secs = seconds || this.defaultSeconds;
+        this.endsAt = Date.now() + secs * 1000;
+        this.now = Date.now();
+        this.notified = false;
+        this._persist();
+        this._primeAudio();
+      },
+      add(seconds) {
+        const base = Math.max(this.endsAt || Date.now(), Date.now());
+        this.endsAt = base + seconds * 1000;
+        this.notified = false;
+        this._persist();
+      },
+      dismiss() {
+        this.endsAt = null;
+        this.notified = false;
+        this._persist();
+      },
+
+      alertDone() {
+        this._beep();
+        try {
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("¡Acabó el descanso!", {
+              body: "Dale a la siguiente serie 💪",
+              tag: "rest-timer",
+            });
+          }
+        } catch (e) {}
+      },
+      _primeAudio() {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!this.audioCtx) this.audioCtx = new Ctx();
+        if (this.audioCtx.state === "suspended") this.audioCtx.resume().catch(() => {});
+      },
+      _beep() {
+        try {
+          this._primeAudio();
+          if (!this.audioCtx) return;
+          const t = this.audioCtx.currentTime;
+          const o = this.audioCtx.createOscillator();
+          const g = this.audioCtx.createGain();
+          o.connect(g); g.connect(this.audioCtx.destination);
+          o.type = "sine"; o.frequency.value = 880;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+          o.start(t); o.stop(t + 0.45);
+        } catch (e) {}
+      },
     };
   }
 </script>

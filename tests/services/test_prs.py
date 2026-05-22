@@ -1,4 +1,5 @@
 """Tests for PR auto-detection."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -9,7 +10,6 @@ from gymapp.apps.prs.models import PersonalRecord, PRSource
 from gymapp.apps.workouts.models import WorkoutStatus
 from gymapp.services import workouts as workouts_service
 from gymapp.services.prs import update_prs_from_session
-
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
 
@@ -104,9 +104,7 @@ def test_different_rep_counts_yield_separate_prs(alice, bench):
         workouts_service.complete_set(s, weight_kg=Decimal(w), reps=r)
 
     workouts_service.finish_session(session)
-    rows = sorted(
-        PersonalRecord.objects.for_user(alice).values_list("reps", "weight_kg")
-    )
+    rows = sorted(PersonalRecord.objects.for_user(alice).values_list("reps", "weight_kg"))
     assert rows == [(1, Decimal("120")), (5, Decimal("100")), (12, Decimal("80"))]
 
 

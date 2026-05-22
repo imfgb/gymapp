@@ -1,4 +1,5 @@
 """Admin for workouts. Owner-scoped through the session."""
+
 from django.contrib import admin
 
 from gymapp.apps.core.admin import OwnerScopedAdmin

@@ -1,4 +1,5 @@
 """ASGI entry point. Used if the project ever serves async (Channels, etc.)."""
+
 import os
 
 from django.core.asgi import get_asgi_application

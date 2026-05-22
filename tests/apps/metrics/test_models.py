@@ -1,4 +1,5 @@
 """Tests for the metrics app — owner scoping + ordering."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -8,7 +9,6 @@ import pytest
 from django.utils import timezone
 
 from gymapp.apps.metrics.models import UserMetricSnapshot
-
 from tests.factories import UserFactory
 
 
@@ -25,12 +25,8 @@ def bob(db):
 @pytest.mark.django_db
 def test_snapshot_for_user_scoping(alice, bob):
     now = timezone.now()
-    UserMetricSnapshot.objects.create(
-        owner=alice, measured_at=now, weight_kg=Decimal("75.0")
-    )
-    UserMetricSnapshot.objects.create(
-        owner=bob, measured_at=now, weight_kg=Decimal("80.0")
-    )
+    UserMetricSnapshot.objects.create(owner=alice, measured_at=now, weight_kg=Decimal("75.0"))
+    UserMetricSnapshot.objects.create(owner=bob, measured_at=now, weight_kg=Decimal("80.0"))
 
     assert UserMetricSnapshot.objects.for_user(alice).count() == 1
     assert UserMetricSnapshot.objects.for_user(bob).count() == 1
@@ -42,9 +38,7 @@ def test_snapshots_ordered_newest_first(alice):
     older = UserMetricSnapshot.objects.create(
         owner=alice, measured_at=now - timedelta(days=7), weight_kg=Decimal("76")
     )
-    newer = UserMetricSnapshot.objects.create(
-        owner=alice, measured_at=now, weight_kg=Decimal("75")
-    )
+    newer = UserMetricSnapshot.objects.create(owner=alice, measured_at=now, weight_kg=Decimal("75"))
 
     rows = list(UserMetricSnapshot.objects.for_user(alice))
     assert rows[0].pk == newer.pk

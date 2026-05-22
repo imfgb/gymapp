@@ -3,6 +3,7 @@
 Global exercises (owner=NULL) are visible to all staff; per-user custom
 exercises are visible only to their owner unless the staffer is a superuser.
 """
+
 from django.contrib import admin
 
 from .models import Equipment, Exercise, ExerciseAlternative, MuscleGroup

@@ -3,6 +3,7 @@
 Cover owner scoping, name uniqueness per owner, weekday uniqueness per owner,
 and the reps_low <= reps_high CHECK constraint.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,6 @@ from django.db import IntegrityError
 from django.db.utils import IntegrityError as DBIntegrityError
 
 from gymapp.apps.routines.models import Routine, RoutineDay, RoutineExercise, WeeklySplit
-
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
 

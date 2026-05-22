@@ -6,6 +6,7 @@ overridable via the admin and the user-facing edit view.
 
 Warm-up sets are ignored (`SetLog.is_warmup=True`).
 """
+
 from __future__ import annotations
 
 from django.db import models
@@ -26,9 +27,7 @@ class PersonalRecord(OwnedMixin, TimestampedModel):
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2)
     reps = models.PositiveSmallIntegerField()
     achieved_at = models.DateTimeField(db_index=True)
-    source = models.CharField(
-        max_length=8, choices=PRSource.choices, default=PRSource.AUTO
-    )
+    source = models.CharField(max_length=8, choices=PRSource.choices, default=PRSource.AUTO)
     source_set = models.ForeignKey(
         "workouts.SetLog",
         on_delete=models.SET_NULL,

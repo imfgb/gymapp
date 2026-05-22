@@ -3,6 +3,7 @@
 Cover the bits with non-trivial logic: visible_to scoping, the slug uniqueness
 per owner, and the self-alternative check constraint.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,6 @@ from django.db import IntegrityError
 from django.db.utils import IntegrityError as DBIntegrityError
 
 from gymapp.apps.exercises.models import Exercise, ExerciseAlternative
-
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
 

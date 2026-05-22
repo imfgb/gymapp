@@ -1,4 +1,5 @@
 """Routines admin. Owner-scoped — non-superusers see only their own rows."""
+
 from django.contrib import admin
 
 from gymapp.apps.core.admin import OwnerScopedAdmin

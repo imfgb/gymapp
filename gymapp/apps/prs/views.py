@@ -1,4 +1,5 @@
 """PRs views: list, per-exercise detail, manual edit/create."""
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -32,11 +33,7 @@ def pr_list(request: HttpRequest) -> HttpResponse:
 @require_GET
 def pr_detail(request: HttpRequest, slug: str) -> HttpResponse:
     exercise = get_object_or_404(Exercise.objects.visible_to(request.user), slug=slug)
-    prs = (
-        PersonalRecord.objects.for_user(request.user)
-        .filter(exercise=exercise)
-        .order_by("reps")
-    )
+    prs = PersonalRecord.objects.for_user(request.user).filter(exercise=exercise).order_by("reps")
     return render(request, "prs/detail.html", {"exercise": exercise, "prs": prs})
 
 
@@ -61,9 +58,7 @@ def pr_edit(request: HttpRequest, pr_id: int) -> HttpResponse:
 def pr_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         try:
-            exercise = Exercise.objects.visible_to(request.user).get(
-                slug=request.POST["exercise"]
-            )
+            exercise = Exercise.objects.visible_to(request.user).get(slug=request.POST["exercise"])
             weight_kg = Decimal(request.POST["weight_kg"])
             reps = int(request.POST["reps"])
         except (KeyError, ValueError, InvalidOperation, Exercise.DoesNotExist):

@@ -4,6 +4,7 @@ DEBUG is forced off. Security headers / HSTS / cookie flags are enabled.
 Sentry is wired only when SENTRY_DSN is present so dev/test never accidentally
 sends events.
 """
+
 from .base import *  # noqa: F401,F403
 from .base import env
 

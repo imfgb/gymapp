@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Historial · gymapp{% endblock %}
+{% block title %}Historial · Smart Fit Altama{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -7,17 +7,30 @@
   <p class="text-sm text-slate-500">Tus últimas 50 sesiones.</p>
 </header>
 
-<form method="post" action="{% url 'workouts:start' %}" class="mb-6">
-  {% csrf_token %}
-  <button type="submit"
-          class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-    Iniciar entrenamiento de hoy
-  </button>
-</form>
+{% if active_session %}
+  <div class="mb-6 flex items-center gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+    <p class="flex-1 text-sm text-amber-800">
+      Tienes un entrenamiento en curso:
+      <strong>{% if active_session.source_routine_day %}{{ active_session.source_routine_day.label }}{% else %}Entrenamiento libre{% endif %}</strong>
+    </p>
+    <a href="{% url 'workouts:session' active_session.id %}"
+       class="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500">
+      Reanudar
+    </a>
+  </div>
+{% else %}
+  <form method="post" action="{% url 'workouts:start' %}" class="mb-6">
+    {% csrf_token %}
+    <button type="submit"
+            class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+      Iniciar entrenamiento de hoy
+    </button>
+  </form>
+{% endif %}
 
 <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
   {% for s in sessions %}
-    <li class="flex items-center justify-between px-4 py-3">
+    <li class="flex items-center justify-between px-4 py-3 {% if s.is_active %}bg-amber-50/50{% endif %}">
       <div>
         <a class="font-medium hover:underline" href="{% url 'workouts:session' s.id %}">
           {% if s.source_routine_day %}{{ s.source_routine_day.label }}{% else %}Entrenamiento libre{% endif %}
@@ -27,7 +40,9 @@
           {% if s.finished_at %} · {{ s.finished_at|timeuntil:s.started_at }}{% endif %}
         </p>
       </div>
-      <span class="text-xs uppercase tracking-wide text-slate-500">{{ s.get_status_display }}</span>
+      <span class="text-xs uppercase tracking-wide {% if s.is_active %}font-semibold text-amber-600{% else %}text-slate-500{% endif %}">
+        {{ s.get_status_display }}
+      </span>
     </li>
   {% empty %}
     <li class="px-4 py-6 text-sm text-slate-500">Aún no hay entrenamientos. Inicia el primero arriba.</li>

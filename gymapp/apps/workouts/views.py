@@ -13,19 +13,20 @@ Owner scoping is enforced via `WorkoutSession.objects.for_user(request.user)`
 plus `get_object_or_404`. Any view that loads a child row (SetLog,
 ExerciseLog) walks up to the session and re-checks.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from gymapp.apps.routines.models import RoutineDay, WeeklySplit
-from gymapp.apps.workouts.models import ExerciseLog, SetLog, WorkoutSession
+from gymapp.apps.workouts.models import ExerciseLog, SetLog, WorkoutSession, WorkoutStatus
 from gymapp.services import workouts as workouts_service
 
 
@@ -39,10 +40,12 @@ def _decimal_or_none(raw):
 
 
 def _int_or_none(raw):
+    """Parse reps as a whole number. Reps are never fractional, so a decimal
+    string (e.g. a pasted "2.5") is rounded rather than dropped."""
     if raw in (None, ""):
         return None
     try:
-        return int(raw)
+        return int(round(float(raw)))
     except (TypeError, ValueError):
         return None
 
@@ -51,18 +54,38 @@ def _int_or_none(raw):
 @require_POST
 def start(request: HttpRequest) -> HttpResponse:
     """Start a session from today's WeeklySplit, or from a specific RoutineDay
-    (when `routine_day` is in POST), or ad-hoc."""
+    (when `routine_day` is in POST), or ad-hoc.
+
+    If the user already has an in-progress session, redirect to it instead of
+    creating a second one.
+    """
+    active = (
+        WorkoutSession.objects.for_user(request.user)
+        .filter(status=WorkoutStatus.IN_PROGRESS)
+        .first()
+    )
+    if active:
+        return redirect("workouts:session", session_id=active.pk)
+
     routine_day = None
     raw_day_id = request.POST.get("routine_day")
     if raw_day_id:
-        routine_day = get_object_or_404(
-            RoutineDay, pk=raw_day_id, routine__owner=request.user
-        )
+        routine_day = get_object_or_404(RoutineDay, pk=raw_day_id, routine__owner=request.user)
     else:
         weekday = timezone.localtime().weekday()
         split = WeeklySplit.objects.for_user(request.user).filter(weekday=weekday).first()
         if split is not None:
             routine_day = split.routine_day
+
+    # When started from the dashboard picker, make today's schedule reflect the
+    # chosen routine so "Esta semana" stays in sync with what the user trained.
+    if routine_day is not None and request.POST.get("set_today_split"):
+        WeeklySplit.objects.update_or_create(
+            owner=request.user,
+            weekday=timezone.localtime().weekday(),
+            defaults={"routine_day": routine_day},
+        )
+
     session = workouts_service.start_session(request.user, routine_day=routine_day)
     return redirect("workouts:session", session_id=session.pk)
 
@@ -98,15 +121,9 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
 
 @login_required
 @require_POST
-def complete_set_view(
-    request: HttpRequest, session_id: int, set_id: int
-) -> HttpResponse:
-    sess = get_object_or_404(
-        WorkoutSession.objects.for_user(request.user), pk=session_id
-    )
-    set_log = get_object_or_404(
-        SetLog, pk=set_id, exercise_log__session=sess
-    )
+def complete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
+    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
     set_log = workouts_service.complete_set(
         set_log,
         weight_kg=_decimal_or_none(request.POST.get("weight_kg")),
@@ -120,24 +137,16 @@ def complete_set_view(
             "set_log": set_log,
             "session": sess,
             "trigger_timer": True,
-            "rest_seconds_default": getattr(
-                request.user.profile, "default_rest_seconds", 120
-            ),
+            "rest_seconds_default": getattr(request.user.profile, "default_rest_seconds", 120),
         },
     )
 
 
 @login_required
 @require_POST
-def update_set_view(
-    request: HttpRequest, session_id: int, set_id: int
-) -> HttpResponse:
-    sess = get_object_or_404(
-        WorkoutSession.objects.for_user(request.user), pk=session_id
-    )
-    set_log = get_object_or_404(
-        SetLog, pk=set_id, exercise_log__session=sess
-    )
+def update_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
+    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
     set_log = workouts_service.update_set_values(
         set_log,
         weight_kg=_decimal_or_none(request.POST.get("weight_kg")),
@@ -153,22 +162,16 @@ def update_set_view(
 
 @login_required
 @require_POST
-def swap_exercise_view(
-    request: HttpRequest, session_id: int, elog_id: int
-) -> HttpResponse:
+def swap_exercise_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
     from gymapp.apps.exercises.models import Exercise
 
-    sess = get_object_or_404(
-        WorkoutSession.objects.for_user(request.user), pk=session_id
-    )
+    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
     elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
 
     new_slug = request.POST.get("to_slug")
     if not new_slug:
         return HttpResponseBadRequest("Missing to_slug")
-    new_exercise = get_object_or_404(
-        Exercise.objects.visible_to(request.user), slug=new_slug
-    )
+    new_exercise = get_object_or_404(Exercise.objects.visible_to(request.user), slug=new_slug)
     try:
         workouts_service.swap_exercise(elog, new_exercise=new_exercise)
     except ValueError as exc:
@@ -185,11 +188,10 @@ def swap_exercise_view(
 @login_required
 @require_POST
 def finish(request: HttpRequest, session_id: int) -> HttpResponse:
-    sess = get_object_or_404(
-        WorkoutSession.objects.for_user(request.user), pk=session_id
-    )
+    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
     workouts_service.finish_session(sess)
-    return redirect("workouts:history")
+    messages.success(request, "¡Ya cumpliste hoy con tu entrenamiento! 💪")
+    return redirect("dashboard:home")
 
 
 @login_required
@@ -200,7 +202,12 @@ def history(request: HttpRequest) -> HttpResponse:
         .order_by("-started_at")
         .select_related("source_routine_day__routine")[:50]
     )
-    return render(request, "workouts/history.html", {"sessions": sessions})
+    active_session = next((s for s in sessions if s.status == WorkoutStatus.IN_PROGRESS), None)
+    return render(
+        request,
+        "workouts/history.html",
+        {"sessions": sessions, "active_session": active_session},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -233,17 +240,13 @@ def add_exercise_view(request: HttpRequest, session_id: int) -> HttpResponse:
     slug = request.POST.get("slug", "").strip()
     if not slug:
         return HttpResponseBadRequest("Missing slug")
-    exercise = get_object_or_404(
-        Exercise.objects.visible_to(request.user), slug=slug
-    )
+    exercise = get_object_or_404(Exercise.objects.visible_to(request.user), slug=slug)
     try:
         sets_count = max(1, int(request.POST.get("sets_count", "3")))
     except ValueError:
         sets_count = 3
 
-    elog = workouts_service.add_exercise_to_session(
-        sess, exercise=exercise, sets_count=sets_count
-    )
+    elog = workouts_service.add_exercise_to_session(sess, exercise=exercise, sets_count=sets_count)
     return _render_exercise_card(request, elog)
 
 
@@ -254,9 +257,7 @@ def add_custom_exercise_view(request: HttpRequest, session_id: int) -> HttpRespo
     sess = _require_active_session(request.user, session_id)
     name = request.POST.get("name", "").strip()
     equipment_slug = request.POST.get("equipment", "").strip()
-    primary_muscle_slugs = [
-        s for s in request.POST.getlist("primary_muscles") if s.strip()
-    ]
+    primary_muscle_slugs = [s for s in request.POST.getlist("primary_muscles") if s.strip()]
     try:
         sets_count = max(1, int(request.POST.get("sets_count", "3")))
     except ValueError:
@@ -277,9 +278,7 @@ def add_custom_exercise_view(request: HttpRequest, session_id: int) -> HttpRespo
 
 @login_required
 @require_POST
-def add_set_view(
-    request: HttpRequest, session_id: int, elog_id: int
-) -> HttpResponse:
+def add_set_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
     """HTMX: append one empty SetLog and return the parent card."""
     sess = _require_active_session(request.user, session_id)
     elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
@@ -290,14 +289,10 @@ def add_set_view(
 
 @login_required
 @require_POST
-def delete_set_view(
-    request: HttpRequest, session_id: int, set_id: int
-) -> HttpResponse:
+def delete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
     """HTMX: delete a SetLog and return the parent card."""
     sess = _require_active_session(request.user, session_id)
-    set_log = get_object_or_404(
-        SetLog, pk=set_id, exercise_log__session=sess
-    )
+    set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
     elog = set_log.exercise_log
     workouts_service.delete_set(set_log)
     elog.refresh_from_db()
@@ -306,9 +301,7 @@ def delete_set_view(
 
 @login_required
 @require_POST
-def delete_exercise_log_view(
-    request: HttpRequest, session_id: int, elog_id: int
-) -> HttpResponse:
+def delete_exercise_log_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
     """HTMX: delete an entire exercise from the session. Returns empty body for
     hx-swap=outerHTML to remove the card."""
     sess = _require_active_session(request.user, session_id)

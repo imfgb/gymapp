@@ -7,6 +7,7 @@ auto-created on `User` save via a post_save signal (see `signals.py`).
 Training-style and training-goal choices live here rather than in `routines`
 because they describe the user, not a particular plan.
 """
+
 from __future__ import annotations
 
 from django.contrib.auth.models import AbstractUser

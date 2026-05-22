@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ routine.name }} · gymapp{% endblock %}
+{% block title %}{{ routine.name }} · Smart Fit Altama{% endblock %}
 
 {% block content %}
 <header class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
@@ -37,6 +37,6 @@
   {% csrf_token %}
   <input type="text" name="label" placeholder="Día (p.ej. Push A)"
          class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm">
-  <button class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">+ Día</button>
+  <button class="rounded-md bg-brand px-3 py-2 text-sm text-ink hover:bg-brand-dark">+ Día</button>
 </form>
 {% endblock %}

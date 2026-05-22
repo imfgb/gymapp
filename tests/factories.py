@@ -1,4 +1,5 @@
 """factory-boy factories. Grow as models land."""
+
 from __future__ import annotations
 
 import factory

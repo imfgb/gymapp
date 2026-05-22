@@ -5,6 +5,7 @@
 *must* call `.for_user(request.user)`. A missing scope call is a security bug
 (see plan §9 Security & Privacy).
 """
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -28,7 +29,7 @@ class OwnerScopedQuerySet(models.QuerySet):
     every view that reads user data must go through `.for_user(request.user)`.
     """
 
-    def for_user(self, user) -> "OwnerScopedQuerySet":
+    def for_user(self, user) -> OwnerScopedQuerySet:
         if user is None or not user.is_authenticated:
             return self.none()
         if user.is_superuser:

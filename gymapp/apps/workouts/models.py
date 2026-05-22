@@ -11,9 +11,9 @@ weight/reps after completion is allowed; uncompleting is not (delete instead).
 Warm-up sets carry `is_warmup=True` and never count toward PRs or volume
 rollups.
 """
+
 from __future__ import annotations
 
-from django.conf import settings
 from django.db import models
 
 from gymapp.apps.core.models import OwnedMixin, OwnerScopedQuerySet, TimestampedModel
@@ -60,9 +60,7 @@ class ExerciseLog(models.Model):
     session = models.ForeignKey(
         WorkoutSession, on_delete=models.CASCADE, related_name="exercise_logs"
     )
-    exercise = models.ForeignKey(
-        Exercise, on_delete=models.PROTECT, related_name="session_logs"
-    )
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name="session_logs")
     ordering = models.PositiveSmallIntegerField(default=0)
     notes = models.CharField(max_length=200, blank=True)
 

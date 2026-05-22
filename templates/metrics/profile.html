@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Perfil · gymapp{% endblock %}
+{% block title %}Perfil · Smart Fit Altama{% endblock %}
 
 {% block content %}
 <h1 class="mb-4 text-2xl font-semibold">Mi perfil</h1>
@@ -48,7 +48,7 @@
   </label>
 
   <div class="flex gap-2">
-    <button type="submit" class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">Guardar</button>
+    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm text-ink hover:bg-brand-dark">Guardar</button>
     <a href="{% url 'metrics:list' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
   </div>
 </form>

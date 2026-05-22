@@ -4,6 +4,7 @@
 fat percentage. Height + DOB live on `users.Profile` because they don't
 change. Phase 2 will add `MonthlyGoal`.
 """
+
 from __future__ import annotations
 
 from django.db import models
@@ -14,9 +15,7 @@ from gymapp.apps.core.models import OwnedMixin, OwnerScopedQuerySet, Timestamped
 class UserMetricSnapshot(OwnedMixin, TimestampedModel):
     measured_at = models.DateTimeField(db_index=True)
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2)
-    body_fat_pct = models.DecimalField(
-        max_digits=4, decimal_places=2, null=True, blank=True
-    )
+    body_fat_pct = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
     notes = models.CharField(max_length=200, blank=True)
 
     objects = OwnerScopedQuerySet.as_manager()

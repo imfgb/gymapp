@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Editar rutina · gymapp{% endblock %}
+{% block title %}Editar rutina · Smart Fit Altama{% endblock %}
 
 {% block content %}
 <h1 class="mb-4 text-2xl font-semibold">Editar — {{ routine.name }}</h1>
@@ -28,7 +28,7 @@
     Archivada (no aparece en la lista principal)
   </label>
   <div class="flex gap-2">
-    <button class="rounded-md bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-800">Guardar</button>
+    <button class="rounded-md bg-brand px-4 py-2 text-sm text-ink hover:bg-brand-dark">Guardar</button>
     <a href="{% url 'routines:detail' routine.id %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
   </div>
 </form>

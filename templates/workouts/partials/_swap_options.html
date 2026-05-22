@@ -1,0 +1,33 @@
+<div class="border-b border-slate-100 bg-slate-50 px-4 py-3">
+  <div class="mb-2 flex items-center justify-between">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Cambiar ejercicio</p>
+    <button type="button"
+            onclick="document.getElementById('swap-{{ elog.id }}').innerHTML = ''"
+            class="text-xs text-slate-500 hover:text-slate-800">Cerrar</button>
+  </div>
+
+  {% if blocked %}
+    <p class="text-sm text-slate-600">No puedes cambiar: este ejercicio ya tiene series completadas.</p>
+  {% elif alternatives %}
+    <ul class="max-h-64 space-y-1 overflow-y-auto">
+      {% for alt in alternatives %}
+        <li>
+          <form hx-post="{% url 'workouts:swap_exercise' session.id elog.id %}"
+                hx-target="#elog-{{ elog.id }}"
+                hx-swap="outerHTML"
+                class="flex items-center justify-between gap-2 py-1">
+            {% csrf_token %}
+            <input type="hidden" name="to_slug" value="{{ alt.slug }}">
+            <span class="min-w-0 truncate">
+              <span class="text-sm">{{ alt.name }}</span>
+              <span class="text-xs text-slate-500">· {{ alt.equipment.name }}</span>
+            </span>
+            <button class="shrink-0 rounded bg-brand px-2 py-1 text-xs text-ink hover:bg-brand-dark">Usar</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-slate-600">No hay alternativas para este ejercicio.</p>
+  {% endif %}
+</div>

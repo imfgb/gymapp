@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
 from gymapp.services import workouts as workouts_service
-from tests.factories import ExerciseFactory, UserFactory
+from tests.factories import EquipmentFactory, ExerciseFactory, MuscleGroupFactory, UserFactory
 
 
 @pytest.fixture
@@ -147,6 +147,40 @@ def test_start_with_set_today_split_updates_weekly_split(client_alice):
     assert resp.status_code == 302
     split = WeeklySplit.objects.get(owner=alice, weekday=timezone.localtime().weekday())
     assert split.routine_day_id == day.id
+
+
+@pytest.mark.django_db
+def test_swap_options_lists_ranked_alternatives(client_alice, clean_catalog):
+    client, alice = client_alice
+    chest = MuscleGroupFactory(slug="chest")
+    bar = EquipmentFactory(slug="barbell")
+    bench = ExerciseFactory(slug="bench", name="Bench Press", equipment=bar)
+    bench.primary_muscles.set([chest])
+    alt = ExerciseFactory(slug="db-bench", name="Dumbbell Bench", equipment=bar)
+    alt.primary_muscles.set([chest])
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=1)
+
+    resp = client.get(reverse("workouts:swap_options", args=[sess.pk, elog.pk]))
+
+    assert resp.status_code == 200
+    assert b"Dumbbell Bench" in resp.content
+
+
+@pytest.mark.django_db
+def test_swap_options_blocked_after_completed_set(client_alice, clean_catalog):
+    client, alice = client_alice
+    chest = MuscleGroupFactory(slug="chest")
+    bench = ExerciseFactory(slug="bench", name="Bench", equipment=EquipmentFactory(slug="barbell"))
+    bench.primary_muscles.set([chest])
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=bench, sets_count=1)
+    workouts_service.complete_set(elog.set_logs.first(), weight_kg=50, reps=8)
+
+    resp = client.get(reverse("workouts:swap_options", args=[sess.pk, elog.pk]))
+
+    assert resp.status_code == 200
+    assert b"ya tiene series completadas" in resp.content
 
 
 @pytest.mark.django_db

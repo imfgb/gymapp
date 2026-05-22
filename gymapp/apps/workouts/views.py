@@ -161,6 +161,27 @@ def update_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpR
 
 
 @login_required
+@require_GET
+def swap_options_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
+    """HTMX: render ranked substitute exercises for an ExerciseLog. Refuses (with
+    a note) if any set is already completed, since swapping would misattribute
+    performed reps."""
+    from gymapp.services.substitution import ranked_alternatives
+
+    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    elog = get_object_or_404(
+        ExerciseLog.objects.select_related("exercise__equipment"), pk=elog_id, session=sess
+    )
+    blocked = elog.set_logs.filter(completed_at__isnull=False).exists()
+    alternatives = [] if blocked else ranked_alternatives(elog.exercise, user=request.user)
+    return render(
+        request,
+        "workouts/partials/_swap_options.html",
+        {"session": sess, "elog": elog, "alternatives": alternatives, "blocked": blocked},
+    )
+
+
+@login_required
 @require_POST
 def swap_exercise_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
     from gymapp.apps.exercises.models import Exercise

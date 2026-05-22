@@ -3,6 +3,7 @@
 Cover: YAML loader parses correctly, idempotent upsert, alternative mirroring,
 lookup_alternatives equipment filter.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -125,9 +126,7 @@ def test_apply_seed_handles_dangling_alternative_reference(tmp_path: Path):
                         "name": "Bench Press",
                         "equipment": "barbell",
                         "primary_muscles": ["chest"],
-                        "alternatives": [
-                            {"slug": "does-not-exist", "reason": "Typo"}
-                        ],
+                        "alternatives": [{"slug": "does-not-exist", "reason": "Typo"}],
                     }
                 ],
             }

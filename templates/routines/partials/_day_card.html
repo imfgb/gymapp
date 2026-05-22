@@ -1,7 +1,7 @@
-{# A single RoutineDay card. Re-rendered after any of its exercises change. #}
+{% load l10n %}{# A single RoutineDay card. Re-rendered after any of its exercises change. #}
 <article id="day-{{ day.id }}"
          class="rounded-lg border border-slate-200 bg-white shadow-sm"
-         x-data="{ pickerOpen: false, search: '' }">
+         x-data="{ pickerOpen: false, search: '', tab: 'pick' }">
   <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
     <h2 class="text-lg font-medium">{{ day.label }}</h2>
     <button type="button"
@@ -20,7 +20,7 @@
             hx-post="{% url 'routines:exercise_update' routine.id day.id rex.id %}"
             hx-target="#day-{{ day.id }}"
             hx-swap="outerHTML"
-            hx-trigger="change delay:400ms from:input">
+            hx-trigger="change delay:400ms">
         {% csrf_token %}
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium">{{ rex.exercise.name }}</p>
@@ -45,7 +45,7 @@
         <label class="text-xs text-slate-500">
           <span class="block">Peso (kg)</span>
           <input type="number" name="target_weight_kg" step="0.5" min="0"
-                 value="{{ rex.target_weight_kg|default_if_none:'' }}"
+                 value="{{ rex.target_weight_kg|default_if_none:''|unlocalize }}"
                  class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
         </label>
         <label class="text-xs text-slate-500">
@@ -77,26 +77,77 @@
       <span x-show="pickerOpen" x-cloak>Cerrar</span>
     </button>
     <div x-show="pickerOpen" x-cloak class="mt-2">
-      <input type="text" x-model="search" placeholder="Buscar…"
-             class="mb-2 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm">
-      <ul class="max-h-60 overflow-y-auto divide-y divide-slate-100">
-        {% for ex in picker_exercises %}
-          <li x-show="search === '' || '{{ ex.name|escapejs|lower }}'.includes(search.toLowerCase())"
-              class="flex items-center justify-between gap-2 py-1.5">
-            <div class="min-w-0">
-              <p class="truncate text-sm">{{ ex.name }}</p>
-              <p class="text-xs text-slate-500">{{ ex.equipment.name }}</p>
+      <div class="mb-2 flex gap-2 border-b border-slate-100">
+        <button type="button" @click="tab = 'pick'"
+                :class="tab === 'pick' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500'"
+                class="border-b-2 px-3 py-1 text-sm font-medium">Buscar</button>
+        <button type="button" @click="tab = 'create'"
+                :class="tab === 'create' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500'"
+                class="border-b-2 px-3 py-1 text-sm font-medium">Crear nuevo</button>
+      </div>
+
+      {# Buscar #}
+      <div x-show="tab === 'pick'">
+        <input type="text" x-model="search" placeholder="Buscar…"
+               class="mb-2 block w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm">
+        <ul class="max-h-60 overflow-y-auto divide-y divide-slate-100">
+          {% for ex in picker_exercises %}
+            <li x-show="search === '' || '{{ ex.name|escapejs|lower }}'.includes(search.toLowerCase())"
+                class="flex items-center justify-between gap-2 py-1.5">
+              <div class="min-w-0">
+                <p class="truncate text-sm">{{ ex.name }}{% if ex.owner_id %} <span class="ml-1 rounded bg-slate-100 px-1 text-[10px] uppercase tracking-wide text-slate-500">custom</span>{% endif %}</p>
+                <p class="text-xs text-slate-500">{{ ex.equipment.name }}</p>
+              </div>
+              <form hx-post="{% url 'routines:exercise_add' routine.id day.id %}"
+                    hx-target="#day-{{ day.id }}"
+                    hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="slug" value="{{ ex.slug }}">
+                <button class="rounded bg-brand px-2 py-1 text-xs text-ink hover:bg-brand-dark">Agregar</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      {# Crear nuevo — also makes the exercise searchable afterwards #}
+      <div x-show="tab === 'create'" x-cloak>
+        <form hx-post="{% url 'routines:exercise_add_custom' routine.id day.id %}"
+              hx-target="#day-{{ day.id }}"
+              hx-swap="outerHTML"
+              class="space-y-2">
+          {% csrf_token %}
+          <label class="block">
+            <span class="text-xs text-slate-600">Nombre</span>
+            <input type="text" name="name" required maxlength="120"
+                   placeholder="p.ej. Hip thrust"
+                   class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+          </label>
+          <label class="block">
+            <span class="text-xs text-slate-600">Equipo</span>
+            <select name="equipment" required
+                    class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+              {% for eq in equipment_choices %}
+                <option value="{{ eq.slug }}">{{ eq.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <fieldset>
+            <legend class="text-xs text-slate-600">Músculos primarios</legend>
+            <div class="mt-1 grid grid-cols-2 gap-1 text-xs">
+              {% for mg in muscle_groups %}
+                <label class="flex items-center gap-1">
+                  <input type="checkbox" name="primary_muscles" value="{{ mg.slug }}">
+                  <span>{{ mg.name }}</span>
+                </label>
+              {% endfor %}
             </div>
-            <form hx-post="{% url 'routines:exercise_add' routine.id day.id %}"
-                  hx-target="#day-{{ day.id }}"
-                  hx-swap="outerHTML">
-              {% csrf_token %}
-              <input type="hidden" name="slug" value="{{ ex.slug }}">
-              <button class="rounded bg-slate-900 px-2 py-1 text-xs text-white hover:bg-slate-800">Agregar</button>
-            </form>
-          </li>
-        {% endfor %}
-      </ul>
+          </fieldset>
+          <button class="rounded-md bg-brand px-3 py-2 text-sm text-ink hover:bg-brand-dark">
+            Crear y agregar
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </article>

@@ -10,6 +10,7 @@ The owner-scoping convention here is slightly looser than `OwnedMixin`: global
 exercises must be visible to every user, so we expose
 `Exercise.objects.visible_to(user)` instead of plain `.for_user(user)`.
 """
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -57,7 +58,7 @@ class Equipment(models.Model):
 
 
 class ExerciseQuerySet(models.QuerySet):
-    def visible_to(self, user) -> "ExerciseQuerySet":
+    def visible_to(self, user) -> ExerciseQuerySet:
         """Global rows (owner IS NULL) plus the requesting user's own rows.
 
         Anonymous users see globals only. Superusers see everything (no extra
@@ -71,7 +72,7 @@ class ExerciseQuerySet(models.QuerySet):
             is_active=True
         )
 
-    def for_user(self, user) -> "ExerciseQuerySet":
+    def for_user(self, user) -> ExerciseQuerySet:
         """Only the user's own (custom) exercises. Used by edit/delete views."""
         if user is None or not user.is_authenticated:
             return self.none()

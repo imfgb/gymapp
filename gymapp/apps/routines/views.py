@@ -4,6 +4,7 @@ All entry points are owner-scoped through `Routine.objects.for_user(request.user
 or `WeeklySplit.objects.for_user(...)`. Child rows (RoutineDay, RoutineExercise)
 walk up to the routine for the same check.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -11,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
@@ -18,6 +20,7 @@ from gymapp.apps.routines.models import (
     Routine,
     RoutineDay,
     RoutineExercise,
+    SkippedDay,
     Weekday,
     WeeklySplit,
 )
@@ -55,9 +58,7 @@ def _int_or_default(raw, default):
 @require_GET
 def routine_list(request: HttpRequest) -> HttpResponse:
     routines = (
-        Routine.objects.for_user(request.user)
-        .filter(is_archived=False)
-        .order_by("-created_at")
+        Routine.objects.for_user(request.user).filter(is_archived=False).order_by("-created_at")
     )
     return render(request, "routines/list.html", {"routines": routines})
 
@@ -69,9 +70,7 @@ def routine_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         mode = request.POST.get("mode", "manual")
         name = request.POST.get("name", "").strip()
-        training_style = request.POST.get(
-            "training_style", request.user.profile.training_style
-        )
+        training_style = request.POST.get("training_style", request.user.profile.training_style)
         if not name:
             return HttpResponseBadRequest("Name is required")
 
@@ -98,7 +97,9 @@ def routine_create(request: HttpRequest) -> HttpResponse:
         "routines/create.html",
         {
             "training_styles": TrainingStyle.choices,
-            "preset_choices": [(p.value, PRESET_LABELS[p]) for p in SplitPreset if p != SplitPreset.CUSTOM],
+            "preset_choices": [
+                (p.value, PRESET_LABELS[p]) for p in SplitPreset if p != SplitPreset.CUSTOM
+            ],
             "default_style": request.user.profile.training_style,
         },
     )
@@ -111,9 +112,7 @@ def routine_preview(request: HttpRequest) -> HttpResponse:
     persisting. Used inside the create form when the user is in 'generate'
     mode."""
     preset_raw = request.POST.get("preset", "ppl_6")
-    training_style = request.POST.get(
-        "training_style", request.user.profile.training_style
-    )
+    training_style = request.POST.get("training_style", request.user.profile.training_style)
     try:
         preset = SplitPreset(preset_raw)
     except ValueError:
@@ -137,9 +136,7 @@ def routine_detail(request: HttpRequest, routine_id: int) -> HttpResponse:
         pk=routine_id,
     )
     visible_exercises = (
-        Exercise.objects.visible_to(request.user)
-        .select_related("equipment")
-        .order_by("name")
+        Exercise.objects.visible_to(request.user).select_related("equipment").order_by("name")
     )
     return render(
         request,
@@ -155,17 +152,13 @@ def routine_detail(request: HttpRequest, routine_id: int) -> HttpResponse:
 
 @login_required
 def routine_edit(request: HttpRequest, routine_id: int) -> HttpResponse:
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         if not name:
             return HttpResponseBadRequest("Name is required")
         routine.name = name
-        routine.training_style = request.POST.get(
-            "training_style", routine.training_style
-        )
+        routine.training_style = request.POST.get("training_style", routine.training_style)
         routine.notes = request.POST.get("notes", "")
         routine.is_archived = "is_archived" in request.POST
         routine.save()
@@ -180,9 +173,7 @@ def routine_edit(request: HttpRequest, routine_id: int) -> HttpResponse:
 @login_required
 @require_POST
 def routine_delete(request: HttpRequest, routine_id: int) -> HttpResponse:
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     routine.delete()
     return redirect("routines:list")
 
@@ -196,24 +187,18 @@ def routine_delete(request: HttpRequest, routine_id: int) -> HttpResponse:
 @require_POST
 def day_add(request: HttpRequest, routine_id: int) -> HttpResponse:
     """HTMX: add a new RoutineDay to the routine. Returns the new day card."""
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     label = request.POST.get("label", "").strip() or f"Día {routine.days.count() + 1}"
     if RoutineDay.objects.filter(routine=routine, label=label).exists():
         return HttpResponseBadRequest("Label already used in this routine")
-    day = RoutineDay.objects.create(
-        routine=routine, label=label, ordering=routine.days.count()
-    )
-    return render(request, "routines/partials/_day_card.html", {"day": day, "routine": routine})
+    day = RoutineDay.objects.create(routine=routine, label=label, ordering=routine.days.count())
+    return _render_day_card(request, day)
 
 
 @login_required
 @require_POST
 def day_delete(request: HttpRequest, routine_id: int, day_id: int) -> HttpResponse:
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
     day.delete()
     return HttpResponse("", status=200)
@@ -225,30 +210,33 @@ def day_delete(request: HttpRequest, routine_id: int, day_id: int) -> HttpRespon
 
 
 def _render_day_card(request, day: RoutineDay) -> HttpResponse:
+    picker_exercises = (
+        Exercise.objects.visible_to(request.user).select_related("equipment").order_by("name")
+    )
     return render(
         request,
         "routines/partials/_day_card.html",
-        {"day": day, "routine": day.routine},
+        {
+            "day": day,
+            "routine": day.routine,
+            "picker_exercises": picker_exercises,
+            "equipment_choices": Equipment.objects.order_by("name"),
+            "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
+        },
     )
 
 
 @login_required
 @require_POST
-def exercise_add(
-    request: HttpRequest, routine_id: int, day_id: int
-) -> HttpResponse:
+def exercise_add(request: HttpRequest, routine_id: int, day_id: int) -> HttpResponse:
     """HTMX: add a catalogue exercise to a routine day. Returns the day card."""
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
 
     slug = request.POST.get("slug", "").strip()
     if not slug:
         return HttpResponseBadRequest("Missing slug")
-    exercise = get_object_or_404(
-        Exercise.objects.visible_to(request.user), slug=slug
-    )
+    exercise = get_object_or_404(Exercise.objects.visible_to(request.user), slug=slug)
 
     style = routine.training_style or request.user.profile.training_style
     is_compound = exercise.category == "compound"
@@ -269,13 +257,47 @@ def exercise_add(
 
 @login_required
 @require_POST
+def exercise_add_custom(request: HttpRequest, routine_id: int, day_id: int) -> HttpResponse:
+    """HTMX: create a per-user custom exercise and add it to the day. The new
+    exercise is owner-scoped, so it also becomes searchable in future pickers."""
+    from gymapp.services.exercise_library import create_custom_exercise
+    from gymapp.services.routine_generator import _rep_scheme
+
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
+    day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
+
+    try:
+        exercise = create_custom_exercise(
+            request.user,
+            name=request.POST.get("name", ""),
+            equipment_slug=request.POST.get("equipment", "").strip(),
+            primary_muscle_slugs=[
+                s for s in request.POST.getlist("primary_muscles") if s.strip()
+            ],
+        )
+    except ValueError as exc:
+        return HttpResponseBadRequest(str(exc))
+
+    style = routine.training_style or request.user.profile.training_style
+    sets, lo, hi = _rep_scheme(style, compound=exercise.category == "compound")
+    RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=exercise,
+        ordering=day.exercises.count(),
+        target_sets=sets,
+        target_reps_low=lo,
+        target_reps_high=hi,
+    )
+    return _render_day_card(request, day)
+
+
+@login_required
+@require_POST
 def exercise_update(
     request: HttpRequest, routine_id: int, day_id: int, rex_id: int
 ) -> HttpResponse:
     """HTMX: edit target_sets/reps/weight/rest_seconds of one RoutineExercise."""
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
     rex = get_object_or_404(RoutineExercise, pk=rex_id, routine_day=day)
 
@@ -297,9 +319,7 @@ def exercise_update(
 def exercise_delete(
     request: HttpRequest, routine_id: int, day_id: int, rex_id: int
 ) -> HttpResponse:
-    routine = get_object_or_404(
-        Routine.objects.for_user(request.user), pk=routine_id
-    )
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
     rex = get_object_or_404(RoutineExercise, pk=rex_id, routine_day=day)
     rex.delete()
@@ -316,9 +336,7 @@ def exercise_delete(
 def weekly_split(request: HttpRequest) -> HttpResponse:
     splits = {
         w.weekday: w
-        for w in WeeklySplit.objects.for_user(request.user).select_related(
-            "routine_day__routine"
-        )
+        for w in WeeklySplit.objects.for_user(request.user).select_related("routine_day__routine")
     }
     rows = []
     for wd in range(7):
@@ -363,3 +381,17 @@ def weekly_split_assign(request: HttpRequest, weekday: int) -> HttpResponse:
         defaults={"routine_day": routine_day},
     )
     return redirect("routines:weekly_split")
+
+
+@login_required
+@require_POST
+def skip_today_toggle(request: HttpRequest) -> HttpResponse:
+    """Toggle a 'no gym today' marker for the current date and return to the
+    dashboard, which slides the week's planned workouts forward accordingly."""
+    today = timezone.localdate()
+    existing = SkippedDay.objects.for_user(request.user).filter(date=today).first()
+    if existing:
+        existing.delete()
+    else:
+        SkippedDay.objects.create(owner=request.user, date=today)
+    return redirect("dashboard:home")

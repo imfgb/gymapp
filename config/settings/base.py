@@ -7,6 +7,7 @@ or process env vars (Railway / CI).
 Spanish UI (`es-mx`) + English domain data. Single timezone for all users
 (`America/Mexico_City`) — see plan §2 decision #12.
 """
+
 from pathlib import Path
 
 import environ
@@ -128,6 +129,11 @@ LANGUAGE_CODE = env.str("LANGUAGE_CODE", default="es-mx")
 TIME_ZONE = env.str("TIME_ZONE", default="America/Mexico_City")
 USE_I18N = True
 USE_TZ = True
+
+# Mexican Spanish uses a period as the decimal separator (Django's bundled `es`
+# formats use a comma, which also breaks <input type="number"> values). Override
+# number formatting locale-wide so weights render as "60.00", not "60,00".
+FORMAT_MODULE_PATH = ["config.formats"]
 
 # ---------------------------------------------------------------------------
 # Static files (whitenoise handles serving in prod)

@@ -25,6 +25,11 @@ urlpatterns = [
         name="exercise_add",
     ),
     path(
+        "<int:routine_id>/days/<int:day_id>/exercises/add-custom/",
+        views.exercise_add_custom,
+        name="exercise_add_custom",
+    ),
+    path(
         "<int:routine_id>/days/<int:day_id>/exercises/<int:rex_id>/update/",
         views.exercise_update,
         name="exercise_update",
@@ -37,4 +42,6 @@ urlpatterns = [
     # Weekly split
     path("split/", views.weekly_split, name="weekly_split"),
     path("split/<int:weekday>/", views.weekly_split_assign, name="weekly_split_assign"),
+    # "Hoy no iré al gym" toggle for today
+    path("skip-today/", views.skip_today_toggle, name="skip_today"),
 ]

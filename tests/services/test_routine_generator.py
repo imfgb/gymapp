@@ -6,11 +6,12 @@ wipe it. The picks are checked by structure (X days, Y exercises per day,
 right rep ranges) rather than specific exercise names, since those depend on
 the seed's alphabetic ordering and are brittle to seed edits.
 """
+
 from __future__ import annotations
 
 import pytest
 
-from gymapp.apps.routines.models import Routine, RoutineDay, RoutineExercise
+from gymapp.apps.routines.models import Routine, RoutineDay
 from gymapp.services.routine_generator import (
     PRESET_LABELS,
     PRESETS,
@@ -20,7 +21,6 @@ from gymapp.services.routine_generator import (
     generate_routine,
     preview_routine,
 )
-
 from tests.factories import UserFactory
 
 
@@ -53,8 +53,10 @@ def test_every_preset_has_a_label_and_days():
 @pytest.mark.django_db
 def test_generate_ppl_6_creates_six_days(alice):
     r = generate_routine(
-        owner=alice, preset=SplitPreset.PPL_6,
-        training_style="powerbuilding", name="PPL test",
+        owner=alice,
+        preset=SplitPreset.PPL_6,
+        training_style="powerbuilding",
+        name="PPL test",
     )
     assert isinstance(r, Routine)
     assert r.owner_id == alice.id
@@ -69,8 +71,10 @@ def test_generate_ppl_6_creates_six_days(alice):
 @pytest.mark.django_db
 def test_generate_powerlifting_uses_low_rep_scheme_on_compounds(alice):
     r = generate_routine(
-        owner=alice, preset=SplitPreset.UPPER_LOWER_4,
-        training_style="powerlifting", name="UL",
+        owner=alice,
+        preset=SplitPreset.UPPER_LOWER_4,
+        training_style="powerlifting",
+        name="UL",
     )
     # The first exercise of any day is always a compound (compounds=2 by
     # default for these presets).
@@ -85,8 +89,10 @@ def test_generate_powerlifting_uses_low_rep_scheme_on_compounds(alice):
 def test_generate_rejects_custom_without_days(alice):
     with pytest.raises(ValueError):
         generate_routine(
-            owner=alice, preset=SplitPreset.CUSTOM,
-            training_style="powerbuilding", name="X",
+            owner=alice,
+            preset=SplitPreset.CUSTOM,
+            training_style="powerbuilding",
+            name="X",
         )
 
 
@@ -97,8 +103,10 @@ def test_generate_with_custom_days(alice):
         DayPlan("Pierna", ["quads", "hamstrings"], compounds=2),
     ]
     r = generate_routine(
-        owner=alice, preset=SplitPreset.CUSTOM,
-        training_style="bodybuilding", name="Custom",
+        owner=alice,
+        preset=SplitPreset.CUSTOM,
+        training_style="bodybuilding",
+        name="Custom",
         custom_days=custom,
     )
     assert r.days.count() == 2
@@ -109,14 +117,12 @@ def test_generate_with_custom_days(alice):
 
 @pytest.mark.django_db
 def test_preview_does_not_persist(alice):
-    days = preview_routine(
-        preset=SplitPreset.PPL_3, training_style="powerbuilding"
-    )
+    days = preview_routine(preset=SplitPreset.PPL_3, training_style="powerbuilding")
     assert len(days) == 3
     for day in days:
         assert day.label
         # exercises are tuples of (name, sets, lo, hi)
-        for (name, sets, lo, hi) in day.exercises:
+        for name, sets, lo, hi in day.exercises:
             assert isinstance(name, str)
             assert sets > 0 and lo > 0 and hi >= lo
     # Nothing should have been written to the DB.
@@ -126,8 +132,10 @@ def test_preview_does_not_persist(alice):
 @pytest.mark.django_db
 def test_generate_picks_no_exercise_twice_in_a_day(alice):
     r = generate_routine(
-        owner=alice, preset=SplitPreset.PPL_6,
-        training_style="powerbuilding", name="Dedup",
+        owner=alice,
+        preset=SplitPreset.PPL_6,
+        training_style="powerbuilding",
+        name="Dedup",
     )
     for day in r.days.all():
         slugs = list(day.exercises.values_list("exercise__slug", flat=True))
@@ -138,12 +146,16 @@ def test_generate_picks_no_exercise_twice_in_a_day(alice):
 def test_generated_routine_is_isolated_per_user(alice):
     bob = UserFactory(email="bob@example.com")
     generate_routine(
-        owner=alice, preset=SplitPreset.PPL_3,
-        training_style="powerbuilding", name="Alice's",
+        owner=alice,
+        preset=SplitPreset.PPL_3,
+        training_style="powerbuilding",
+        name="Alice's",
     )
     generate_routine(
-        owner=bob, preset=SplitPreset.PPL_3,
-        training_style="bodybuilding", name="Bob's",
+        owner=bob,
+        preset=SplitPreset.PPL_3,
+        training_style="bodybuilding",
+        name="Bob's",
     )
     assert Routine.objects.for_user(alice).count() == 1
     assert Routine.objects.for_user(bob).count() == 1

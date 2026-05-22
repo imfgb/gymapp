@@ -6,11 +6,42 @@ the `exercises.0002_seed_catalog` data migration) and queries the
 
 Phase 4 may add an AI-ranked variant; the Protocol is the swap point.
 """
+
 from __future__ import annotations
 
 from typing import Protocol
 
+from django.db import transaction
+from django.utils.text import slugify
+
 from .loader import apply_seed, load_seed, lookup_alternatives  # noqa: F401
+
+
+@transaction.atomic
+def create_custom_exercise(owner, *, name, equipment_slug, primary_muscle_slugs=None):
+    """Create a per-user custom Exercise (owner-scoped, so it becomes searchable
+    in that user's pickers). Raises ValueError on bad input or a duplicate."""
+    from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
+
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("El nombre del ejercicio es obligatorio.")
+    slug = slugify(name)[:80]
+    if not slug:
+        raise ValueError("El nombre no produjo un identificador válido.")
+    try:
+        equipment = Equipment.objects.get(slug=equipment_slug)
+    except Equipment.DoesNotExist as exc:
+        raise ValueError("Equipo inválido.") from exc
+    if Exercise.objects.filter(owner=owner, slug=slug).exists():
+        raise ValueError(f"Ya tienes un ejercicio personalizado llamado '{name}'.")
+
+    exercise = Exercise.objects.create(
+        owner=owner, slug=slug, name=name, equipment=equipment, category="compound"
+    )
+    if primary_muscle_slugs:
+        exercise.primary_muscles.set(MuscleGroup.objects.filter(slug__in=primary_muscle_slugs))
+    return exercise
 
 
 class ExerciseLibraryStrategy(Protocol):
@@ -28,6 +59,7 @@ __all__ = [
     "ExerciseLibraryStrategy",
     "DeterministicExerciseLibrary",
     "apply_seed",
+    "create_custom_exercise",
     "load_seed",
     "lookup_alternatives",
 ]

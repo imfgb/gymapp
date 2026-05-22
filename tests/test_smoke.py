@@ -3,6 +3,7 @@ deterministic services return their expected stub shapes.
 
 These exist so the CI pipeline has something green to run before Phase 1 lands.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -27,16 +28,22 @@ def test_user_factory_creates_user_with_profile():
     assert Profile.objects.filter(user=user).exists()
 
 
-def test_progression_service_repeats_last_history():
-    from gymapp.services.coaching import SetRecommendation, progression
+def test_progression_service_no_history_returns_stub():
+    from decimal import Decimal
 
-    rec = progression.recommend_next(
-        "bench-press",
-        history=[SetRecommendation(weight_kg=100.0, reps=5)],
+    from gymapp.services.progression import DeterministicDoubleProgression
+
+    strategy = DeterministicDoubleProgression()
+    rec = strategy.recommend(
+        last_sets=[],
+        target_reps_low=8,
+        target_reps_high=12,
+        current_weight=Decimal("100"),
+        weight_increment_kg=Decimal("2.5"),
     )
-    assert rec.weight_kg == 100.0
-    assert rec.reps == 5
-    assert rec.rationale == "repeat_last"
+    assert rec.weight_kg == Decimal("100")
+    assert rec.reps == 8
+    assert rec.rationale == "no_history"
 
 
 @pytest.mark.django_db

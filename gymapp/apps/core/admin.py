@@ -3,6 +3,7 @@
 Subclass `OwnerScopedAdmin` for any model whose rows are user-owned so that
 non-superusers only see their own rows in `/admin`.
 """
+
 from django.contrib import admin
 
 

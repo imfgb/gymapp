@@ -1,12 +1,13 @@
 """Smoke tests for the routine CRUD views."""
+
 from __future__ import annotations
 
 import pytest
 from django.urls import reverse
 
-from gymapp.apps.routines.models import Routine, RoutineDay, WeeklySplit
-
-from tests.factories import UserFactory
+from gymapp.apps.exercises.models import Exercise
+from gymapp.apps.routines.models import Routine, RoutineDay, RoutineExercise, WeeklySplit
+from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
 
 @pytest.fixture
@@ -95,12 +96,84 @@ def test_day_add_returns_card_partial(client, alice):
 
 
 @pytest.mark.django_db
+def test_exercise_add_custom_creates_searchable_exercise(client, alice):
+    """Creating a custom exercise from the routine editor adds it to the day and
+    makes it an owner-scoped Exercise (searchable later)."""
+    EquipmentFactory(slug="barbell", name="Barbell")
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    client.force_login(alice)
+
+    resp = client.post(
+        reverse("routines:exercise_add_custom", args=[r.id, day.id]),
+        data={"name": "Hip Thrust", "equipment": "barbell"},
+    )
+
+    assert resp.status_code == 200
+    ex = Exercise.objects.get(owner=alice, slug="hip-thrust")
+    assert ex.name == "Hip Thrust"
+    assert day.exercises.filter(exercise=ex).exists()
+    assert b"Hip Thrust" in resp.content
+
+
+@pytest.mark.django_db
+def test_exercise_add_custom_rejects_blank_name(client, alice):
+    EquipmentFactory(slug="barbell", name="Barbell")
+    r = Routine.objects.create(owner=alice, name="R")
+    day = RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    client.force_login(alice)
+
+    resp = client.post(
+        reverse("routines:exercise_add_custom", args=[r.id, day.id]),
+        data={"name": "  ", "equipment": "barbell"},
+    )
+
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
 def test_day_add_rejects_duplicate_label(client, alice):
     r = Routine.objects.create(owner=alice, name="R")
     RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
     client.force_login(alice)
     resp = client.post(reverse("routines:day_add", args=[r.id]), data={"label": "Push A"})
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_exercise_update_persists_and_renders_weight_with_period(client, alice):
+    """Editing the weight must save it and re-render it with a period decimal
+    separator. Under the es-mx locale a Decimal renders as '60,00', which an
+    <input type="number"> rejects and blanks — so the value must be unlocalized."""
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    rex = RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(),
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+    )
+    client.force_login(alice)
+
+    resp = client.post(
+        reverse("routines:exercise_update", args=[r.id, day.id, rex.id]),
+        data={
+            "target_sets": "3",
+            "target_reps_low": "8",
+            "target_reps_high": "12",
+            "target_weight_kg": "60",
+            "rest_seconds": "",
+        },
+    )
+
+    assert resp.status_code == 200
+    rex.refresh_from_db()
+    assert rex.target_weight_kg == 60
+    content = resp.content.decode()
+    assert 'value="60.00"' in content
+    assert "60,00" not in content
 
 
 @pytest.mark.django_db

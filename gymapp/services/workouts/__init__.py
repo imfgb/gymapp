@@ -8,6 +8,7 @@ These are plain functions for now — no Strategy/Protocol yet because there's
 no AI-driven variant on the horizon. Phase 4 may extract a Protocol if
 LLM-driven session orchestration ever materialises.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -49,18 +50,25 @@ def start_session(
     )
 
     if routine_day is not None:
+        from gymapp.services.progression import recommend_next
+
         for idx, rex in enumerate(
             routine_day.exercises.select_related("exercise").order_by("ordering", "id")
         ):
-            elog = ExerciseLog.objects.create(
-                session=session, exercise=rex.exercise, ordering=idx
+            elog = ExerciseLog.objects.create(session=session, exercise=rex.exercise, ordering=idx)
+            rec = recommend_next(
+                user=owner,
+                exercise=rex.exercise,
+                target_reps_low=rex.target_reps_low,
+                target_reps_high=rex.target_reps_high,
+                current_weight=rex.target_weight_kg,
             )
             for set_idx in range(rex.target_sets):
                 SetLog.objects.create(
                     exercise_log=elog,
                     ordering=set_idx,
-                    weight_kg=rex.target_weight_kg,
-                    reps=rex.target_reps_low,  # prescribed target; user edits before completing
+                    weight_kg=rec.weight_kg,
+                    reps=rec.reps,
                 )
 
     return session
@@ -151,9 +159,7 @@ def add_exercise_to_session(
 ) -> ExerciseLog:
     """Append an ExerciseLog (with N empty SetLogs) to an in-progress session."""
     next_order = session.exercise_logs.count()
-    elog = ExerciseLog.objects.create(
-        session=session, exercise=exercise, ordering=next_order
-    )
+    elog = ExerciseLog.objects.create(session=session, exercise=exercise, ordering=next_order)
     for i in range(sets_count):
         SetLog.objects.create(exercise_log=elog, ordering=i)
     return elog
@@ -174,33 +180,14 @@ def add_custom_exercise_and_use(
     Raises `ValueError` if the user already owns an exercise with the same
     generated slug.
     """
-    from django.utils.text import slugify
+    from gymapp.services.exercise_library import create_custom_exercise
 
-    from gymapp.apps.exercises.models import Equipment, MuscleGroup
-
-    name = name.strip()
-    if not name:
-        raise ValueError("Exercise name is required.")
-    equipment = Equipment.objects.get(slug=equipment_slug)
-
-    slug = slugify(name)[:80]
-    if not slug:
-        raise ValueError("Name did not produce a valid slug.")
-
-    if Exercise.objects.filter(owner=session.owner, slug=slug).exists():
-        raise ValueError(f"You already have a custom exercise with slug '{slug}'.")
-
-    exercise = Exercise.objects.create(
-        owner=session.owner,
-        slug=slug,
+    exercise = create_custom_exercise(
+        session.owner,
         name=name,
-        equipment=equipment,
-        category="compound",
+        equipment_slug=equipment_slug,
+        primary_muscle_slugs=primary_muscle_slugs,
     )
-    if primary_muscle_slugs:
-        muscles = MuscleGroup.objects.filter(slug__in=primary_muscle_slugs)
-        exercise.primary_muscles.set(muscles)
-
     elog = add_exercise_to_session(session, exercise=exercise, sets_count=sets_count)
     return exercise, elog
 
@@ -214,9 +201,13 @@ def add_set_to_exercise(exercise_log: ExerciseLog) -> SetLog:
 
 @transaction.atomic
 def delete_set(set_log: SetLog) -> None:
-    """Remove a SetLog. Allowed in any state (including completed) — useful for
-    correcting mistakes mid-workout."""
+    """Remove a SetLog and renumber siblings so ordering stays contiguous."""
+    elog = set_log.exercise_log
     set_log.delete()
+    for new_idx, sibling in enumerate(elog.set_logs.order_by("ordering", "id")):
+        if sibling.ordering != new_idx:
+            sibling.ordering = new_idx
+            sibling.save(update_fields=["ordering"])
 
 
 @transaction.atomic

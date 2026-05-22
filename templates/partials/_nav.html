@@ -1,7 +1,7 @@
 {# Mobile: top bar. Desktop (md+): left sidebar. #}
-<nav class="bg-slate-900 text-slate-100 md:w-56 md:min-h-screen md:flex md:flex-col">
+<nav class="bg-ink text-slate-100 md:w-56 md:min-h-screen md:flex md:flex-col">
   <div class="px-4 py-4 md:py-6 flex items-center justify-between md:block">
-    <a href="{% url 'dashboard:home' %}" class="text-lg font-semibold tracking-tight">gymapp</a>
+    <a href="{% url 'dashboard:home' %}" class="text-lg font-extrabold uppercase leading-tight tracking-tight text-brand">Smart Fit<br class="hidden md:block"> Altama</a>
     <span class="text-xs text-slate-400 hidden md:block mt-1">{{ user.email }}</span>
   </div>
 

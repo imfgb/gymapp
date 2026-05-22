@@ -258,6 +258,37 @@ Detail → `ROADMAP.md`.
 
 **Phase 1 — Tracking MVP: complete.** All six Phase 1 features in `.claude/feature_list.json` are `done`. The MVP loop works end-to-end: a user can build a routine, schedule it on weekdays, start today's workout from the dashboard, tap-complete sets with the rest timer, finish the session, and see PRs auto-detected.
 
+**Phase 2 — Programming: in progress.** Features landed so far (2026-05-21):
+
+- **session-live-edit**: add/delete exercises and sets mid-workout; add custom exercises; HTMX endpoints.
+- **routine-crud**: full user-facing list/create/edit/delete for routines, days, and exercises. Exercise picker with search (240 exercises).
+- **routine-generator**: pick split preset + training style → service generates RoutineDays + RoutineExercises with correct rep schemes. HTMX live preview on create form.
+- **progression-service**: `DeterministicLinearProgression` (powerlifting) + `DeterministicDoubleProgression` (bodybuilding/powerbuilding). `recommend_next()` wired into `start_session` — every working set pre-filled with weight × reps from last finished session. Increment: +5 kg/+2.5 kg compound/isolation (powerlifting); +2.5 kg/+1.25 kg (others).
+
+**Landed 2026-05-22 (UX + branding, beyond the original feature list):**
+
+- **Smart Fit rebrand**: app branded "Smart Fit Altama"; yellow (`brand`=#F5E000) on near-black (`ink`) palette defined in `tailwind.config.js`; primary buttons `bg-brand text-ink`. Run `npm run build:css` after Tailwind class/config changes.
+- **Decimal localization fix**: `FORMAT_MODULE_PATH=["config.formats"]` (+ `config/formats/es{,_MX}/formats.py`) forces a period decimal separator app-wide. es-MX was rendering commas, which also blanked `<input type="number">` values.
+- **Rest timer**: green "¡Dale a la serie!" ready banner; `endsAt` persisted in `localStorage` so it survives reload/screen-lock; best-effort Web Notification opt-in (foreground only — no PWA, consistent with decision #3).
+- **"Hoy no iré al gym"**: `SkippedDay` model (migration `routines.0002`) + `routines:skip_today` toggle; dashboard `build_week_view()` slides the week's workouts forward past skipped days.
+- **Dashboard**: ignores archived routines in the schedule; routine picker to start ANY active routine (`set_today_split` also reschedules today's `WeeklySplit`); live working-set progress counter (DOM + `htmx:after-settle`, no reload); finishing redirects to home with a "¡Ya cumpliste hoy!" message + persistent `done_today` state.
+- **Custom exercise from the routine editor**: "Crear nuevo" tab → `routines:exercise_add_custom`; shared creator `services.exercise_library.create_custom_exercise`.
+- **Bug fixes**: reps forced integer (client strip + server coerce); set-delete was blocked by the Django Debug Toolbar's expanded panel covering right-aligned buttons (fixed with `DEBUG_TOOLBAR_CONFIG={"SHOW_COLLAPSED": True}`); fixed multi-line `{# #}` comments leaking as visible text (now guarded by tests).
+
+Phase 2 features still queued: **substitution-scoring (next)**, warmup-generation, monthly-goals.
+
+**Bug fixes applied (2026-05-21):**
+
+1. **Set numbering**: `delete_set` renumbers sibling `SetLog.ordering` to stay contiguous. Previously deleting set #2 of 3 caused "1., 3., 3., 4." on next add.
+2. **Duplicate sessions**: `start` view redirects to existing `IN_PROGRESS` session instead of creating a second one. History page shows "Reanudar" banner.
+3. **Template bugs**: multiline Django `{# #}` comments render as visible text — removed. Alpine v3 event handler fixed. Two-step finish confirmation added.
+4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
+5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
+
+**Test suite: 116 tests passing (2026-05-22).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+
+**Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `gym1234`. Start server: `source .venv/bin/activate && python manage.py runserver`.
+
 **First local test (2026-05-20):** Server ran on `127.0.0.1:8000` against SQLite with demo data. **User reported the UI feels slow.**
 
 **Second test (2026-05-20, after applying app-level perf fixes):** A first request to `/auth/login/` took **10.1 seconds**. App-level fixes applied (still useful even after the real root cause is solved):
@@ -344,15 +375,14 @@ Update this section at the start of every phase transition.
 
 In priority order for the next session:
 
-1. **Move the project off iCloud Drive** (see §14 "But the real root cause" section). Until this is done, `runserver` hangs and nothing else can be verified locally. After moving, re-create the venv (`rm -rf .venv && python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt`) because the venv contains absolute paths.
-2. **Verify the perf fixes actually feel fast.** Compiled Tailwind + HTMX progress bar + dev `STORAGES` override are already committed. Restart the server and click around.
-3. **GitHub push.** `gh` is installed; auth still pending. Have the user run `! gh auth login --hostname github.com --git-protocol ssh --web`, then `gh repo create imfgb/gymapp --private --source . --push`.
-4. **Railway deploy.** Runbook in `DEPLOYMENT.md §2`.
-5. **Phase 2.** Programming features per `ROADMAP.md`.
+1. **GitHub push.** `gh` is installed. Run `! gh auth login --hostname github.com --git-protocol ssh --web`, then push. Auto-deploy to Railway triggers on push to `main`.
+2. **Railway deploy.** Runbook in `DEPLOYMENT.md §2`. Requires env vars: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL` (auto-injected).
+3. **Phase 2 remaining features** (in order from `ROADMAP.md`):
+   - **substitution-scoring**: multi-factor ranking for the "swap exercise" picker (muscle overlap, equipment, fatigue).
+   - **warmup-generation**: auto-prepend `is_warmup=True` SetLogs (e.g. 50%×5, 70%×3, 85%×1) when starting a session.
+   - **monthly-goals**: `MonthlyGoal` model + dashboard card.
+4. **Phase 2 exit criterion check**: "swap exercise returns ranked alternatives" — currently returns unranked. Progression pre-fill is done.
 
-Local dev state at end of last session:
-- Python 3.12.7 + Node 24 + npm 11 installed and working.
-- `.venv/` and `node_modules/` exist but are being offloaded by iCloud — treat them as if they need a full reinstall after the move.
-- `.env` configured for SQLite (`db.sqlite3`).
-- Superuser: `fglzb00@gmail.com` / `gym1234`. Demo `PPL Demo` routine + WeeklySplit + body-metric snapshot seeded.
-- Server stopped. After moving the project, regenerate venv, then: `source .venv/bin/activate && python manage.py runserver`.
+Local dev state:
+- Project at `~/gymapp/`. Server starts with: `source .venv/bin/activate && python manage.py runserver`
+- `pytest` → 100 passing. `ruff check .` → clean.

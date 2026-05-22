@@ -4,6 +4,7 @@ Called from `workouts.finish_session`. Walks all completed working SetLogs in
 the session and upserts PRs:
     one row per (owner, exercise, reps); we keep the heaviest weight observed.
 """
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -18,11 +19,7 @@ def update_prs_from_session(session) -> list:
 
     touched: list = []
 
-    sets = (
-        session.exercise_logs.select_related("exercise")
-        .prefetch_related("set_logs")
-        .all()
-    )
+    sets = session.exercise_logs.select_related("exercise").prefetch_related("set_logs").all()
     for elog in sets:
         for s in elog.set_logs.all():
             if s.completed_at is None or s.is_warmup:

@@ -1,4 +1,5 @@
 """Metrics views: list snapshots, add new, edit profile baseline."""
+
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
@@ -49,9 +50,7 @@ def snapshot_create(request: HttpRequest) -> HttpResponse:
 def snapshot_delete(request: HttpRequest, snapshot_id: int) -> HttpResponse:
     if request.method != "POST":
         return HttpResponseBadRequest("POST only")
-    snapshot = get_object_or_404(
-        UserMetricSnapshot.objects.for_user(request.user), pk=snapshot_id
-    )
+    snapshot = get_object_or_404(UserMetricSnapshot.objects.for_user(request.user), pk=snapshot_id)
     snapshot.delete()
     return redirect("metrics:list")
 
@@ -67,12 +66,8 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
         except ValueError:
             return HttpResponseBadRequest("invalid height_cm")
         profile.date_of_birth = dob or None
-        profile.training_style = request.POST.get(
-            "training_style", profile.training_style
-        )
-        profile.training_goal = request.POST.get(
-            "training_goal", profile.training_goal
-        )
+        profile.training_style = request.POST.get("training_style", profile.training_style)
+        profile.training_goal = request.POST.get("training_goal", profile.training_goal)
         try:
             profile.default_rest_seconds = int(
                 request.POST.get("default_rest_seconds") or profile.default_rest_seconds

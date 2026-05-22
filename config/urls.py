@@ -3,6 +3,7 @@
 Each Django app owns a `urls.py` and is mounted below. The dashboard owns the
 root URL (`/`); auth views live under `/auth/`; the admin under `/admin/`.
 """
+
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
@@ -23,9 +24,7 @@ urlpatterns = [
     ),
     path(
         "auth/password/change/done/",
-        auth_views.PasswordChangeDoneView.as_view(
-            template_name="auth/password_change_done.html"
-        ),
+        auth_views.PasswordChangeDoneView.as_view(template_name="auth/password_change_done.html"),
         name="password_change_done",
     ),
     path("routines/", include("gymapp.apps.routines.urls")),

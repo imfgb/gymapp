@@ -1,4 +1,5 @@
 """Test settings — fast hasher, predictable DB, no Sentry, no whitenoise."""
+
 from .base import *  # noqa: F401,F403
 from .base import MIDDLEWARE
 

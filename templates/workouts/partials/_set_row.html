@@ -1,8 +1,7 @@
-{# One set row. Self-replacing via hx-target="this" + outerHTML when the user
-   completes; the delete button targets the parent card so ordering stays
-   consistent after a row disappears. #}
-<form id="setlog-{{ set_log.id }}"
+{% load l10n %}<form id="setlog-{{ set_log.id }}"
       class="flex flex-wrap items-center gap-2 px-4 py-2 {% if set_log.is_complete %}bg-emerald-50/40{% endif %}"
+      data-working="{% if set_log.is_warmup %}0{% else %}1{% endif %}"
+      data-complete="{% if set_log.is_complete %}1{% else %}0{% endif %}"
       hx-post="{% url 'workouts:complete_set' session.id set_log.id %}"
       hx-target="this"
       hx-swap="outerHTML">
@@ -13,7 +12,7 @@
   <label class="flex items-center gap-1 text-xs text-slate-500">
     <span class="sr-only">Peso</span>
     <input type="number" name="weight_kg" inputmode="decimal" step="0.5" min="0"
-           value="{{ set_log.weight_kg|default_if_none:'' }}"
+           value="{{ set_log.weight_kg|default_if_none:''|unlocalize }}"
            {% if set_log.is_complete %}readonly{% endif %}
            class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
     <span class="text-xs text-slate-500">kg</span>
@@ -23,7 +22,8 @@
 
   <label class="flex items-center gap-1 text-xs text-slate-500">
     <span class="sr-only">Reps</span>
-    <input type="number" name="reps" inputmode="numeric" min="0"
+    <input type="number" name="reps" inputmode="numeric" step="1" min="0"
+           oninput="const v = this.value.replace(/\D/g, ''); if (v !== this.value) this.value = v"
            value="{{ set_log.reps|default_if_none:'' }}"
            {% if set_log.is_complete %}readonly{% endif %}
            class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
@@ -39,7 +39,7 @@
       <span class="text-sm text-emerald-700">✓ {{ set_log.completed_at|date:"H:i" }}</span>
     {% else %}
       <button type="submit"
-              class="rounded-md bg-slate-900 px-3 py-1 text-sm text-white hover:bg-slate-800">
+              class="rounded-md bg-brand px-3 py-1 text-sm text-ink hover:bg-brand-dark">
         Completar
       </button>
     {% endif %}

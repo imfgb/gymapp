@@ -6,6 +6,7 @@ time the YAML expands (subsequent runs upsert, never duplicate).
 Keep this pure-Python: no Django imports at module load time, so the migration
 can import it without circular issues.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -121,11 +122,7 @@ def lookup_alternatives(
     except Exercise.DoesNotExist:
         return []
 
-    qs = (
-        ExerciseAlternative_for(source)
-        .select_related("to_exercise__equipment")
-        .order_by("id")
-    )
+    qs = ExerciseAlternative_for(source).select_related("to_exercise__equipment").order_by("id")
     if available_equipment:
         qs = qs.filter(to_exercise__equipment__slug__in=available_equipment)
     return [link.to_exercise.slug for link in qs]

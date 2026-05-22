@@ -17,6 +17,7 @@ Picking is greedy: alphabetically the first global exercise whose primary
 muscles contain the target. The user immediately edits to taste — we're
 trying to skip the blank-page problem, not to be brilliant.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,7 +26,7 @@ from enum import Enum
 from django.db import transaction
 
 
-class SplitPreset(str, Enum):
+class SplitPreset(str, Enum):  # noqa: UP042 — StrEnum needs Python 3.11+
     PPL_6 = "ppl_6"
     PPL_3 = "ppl_3"
     UPPER_LOWER_4 = "upper_lower_4"
@@ -160,16 +161,10 @@ def generate_routine(
 
     plans = _resolve_plans(preset, custom_days)
 
-    routine = Routine.objects.create(
-        owner=owner, name=name, training_style=training_style
-    )
+    routine = Routine.objects.create(owner=owner, name=name, training_style=training_style)
     for day_idx, plan in enumerate(plans):
-        day = RoutineDay.objects.create(
-            routine=routine, label=plan.label, ordering=day_idx
-        )
-        for ordering, (ex, sets, lo, hi) in enumerate(
-            _build_day_exercises(plan, training_style)
-        ):
+        day = RoutineDay.objects.create(routine=routine, label=plan.label, ordering=day_idx)
+        for ordering, (ex, sets, lo, hi) in enumerate(_build_day_exercises(plan, training_style)):
             RoutineExercise.objects.create(
                 routine_day=day,
                 exercise=ex,

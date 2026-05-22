@@ -4,6 +4,7 @@ Loaded when `DJANGO_SETTINGS_MODULE=config.settings.dev`. Adds debug toolbar
 (if installed), prints emails to the console, and is happy with the insecure
 default SECRET_KEY from `.env`.
 """
+
 from .base import *  # noqa: F401,F403
 from .base import INSTALLED_APPS, MIDDLEWARE
 
@@ -17,6 +18,10 @@ try:
 
     INSTALLED_APPS += ["debug_toolbar"]
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+    # Start collapsed: the expanded panel docks over the right third of the
+    # viewport and covers every right-aligned control (delete-set ✕, "+ serie",
+    # "Borrar"), making them unclickable.
+    DEBUG_TOOLBAR_CONFIG = {"SHOW_COLLAPSED": True}
 except ImportError:
     pass
 

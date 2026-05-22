@@ -3,6 +3,7 @@
 Will compute BMR (Mifflin-St Jeor), TDEE, bulk/cut/recomp recommendation, and
 macro split. Interface stub only in Phase 0.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,8 +27,7 @@ class NutritionStrategy(Protocol):
         sex: str,
         activity_factor: float,
         goal: str,
-    ) -> MacroTarget:
-        ...
+    ) -> MacroTarget: ...
 
 
 class DeterministicNutrition:

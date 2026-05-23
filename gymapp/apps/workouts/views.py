@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -211,7 +210,7 @@ def swap_exercise_view(request: HttpRequest, session_id: int, elog_id: int) -> H
 def finish(request: HttpRequest, session_id: int) -> HttpResponse:
     sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
     workouts_service.finish_session(sess)
-    messages.success(request, "¡Ya cumpliste hoy con tu entrenamiento! 💪")
+    # The dashboard's done_today card already confirms completion, so no flash here.
     return redirect("dashboard:home")
 
 

@@ -43,28 +43,28 @@ def test_catalog_keeps_kept_foods_and_drops_removed():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_meal_picks_from_preferences_with_grams():
-    meal = generate_meal(
-        "breakfast", TARGET, ["chicken", "rice", "avocado"], rng=random.Random(0)  # noqa: S311
-    )
-    # breakfast = protein/carb/fat → one from each, each with raw grams
-    assert {i.slug for i in meal.items} == {"chicken", "rice", "avocado"}
+def test_generate_meal_uses_a_coherent_template_with_grams():
+    # liking the mains of "Avena con whey y plátano" → that breakfast template
+    prefs = ["whey_isolate", "oats", "banana", "peanut_butter"]
+    meal = generate_meal("breakfast", TARGET, prefs, rng=random.Random(0))  # noqa: S311
+    assert {i.slug for i in meal.items}.issubset(set(prefs))
     assert all(i.grams > 0 for i in meal.items)
-    # protein source is sized to hit the slot's protein share (~40 g)
-    assert meal.protein_g >= 38
-    # totals equal the sum of the items
+    assert meal.protein_g > 0
+    # totals equal the sum of the items (grams explain the macros)
     assert meal.calories == sum(i.calories for i in meal.items)
 
 
-def test_generate_meal_empty_preferences_gives_no_items():
+def test_generate_meal_falls_back_to_a_template_without_prefs():
+    # No prefs → still a coherent meal (never an empty/odd plate).
     meal = generate_meal("lunch", TARGET, [], rng=random.Random(1))  # noqa: S311
-    assert meal.items == []
-    assert meal.calories == 0
+    assert meal.items  # non-empty
+    assert meal.calories > 0
 
 
 def test_generate_meal_only_uses_liked_items():
-    prefs = ["chicken", "beef", "salmon", "rice", "broccoli"]
-    for seed in range(5):
+    # prefs cover two lunch templates fully (incl. their veg)
+    prefs = ["chicken", "rice", "broccoli", "lean_beef", "potato", "asparagus"]
+    for seed in range(6):
         meal = generate_meal("lunch", TARGET, prefs, rng=random.Random(seed))  # noqa: S311
         assert {i.slug for i in meal.items}.issubset(set(prefs))
 
@@ -83,7 +83,10 @@ def alice(db):
     p.sex = Sex.MALE
     p.activity_level = ActivityLevel.MODERATE
     p.training_goal = TrainingGoal.MAINTAIN
-    p.food_preferences = ["chicken", "rice", "avocado"]
+    p.food_preferences = [
+        "chicken", "rice", "broccoli",  # lunch/dinner template
+        "whey_isolate", "oats", "banana", "peanut_butter",  # breakfast template
+    ]
     p.save()
     UserMetricSnapshot.objects.create(
         owner=u, measured_at=timezone.now(), weight_kg=Decimal("80")

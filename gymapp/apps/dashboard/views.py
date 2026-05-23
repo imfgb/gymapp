@@ -12,6 +12,7 @@ from gymapp.apps.metrics.models import UserMetricSnapshot
 from gymapp.apps.prs.models import PersonalRecord
 from gymapp.apps.routines.models import Routine, SkippedDay, Weekday, WeeklySplit
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
+from gymapp.services.goals import current_goal, monthly_goal_progress
 
 
 def build_week_view(
@@ -113,6 +114,9 @@ def home(request):
         .order_by("name")
     )
 
+    goal = current_goal(request.user, today)
+    goal_progress = monthly_goal_progress(goal) if goal else []
+
     return render(
         request,
         "dashboard/home.html",
@@ -126,5 +130,6 @@ def home(request):
             "latest_metric": latest_metric,
             "startable_routines": startable_routines,
             "done_today": done_today,
+            "goal_progress": goal_progress,
         },
     )

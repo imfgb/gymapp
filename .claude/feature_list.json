@@ -96,8 +96,8 @@
       "id": "phase2-monthly-goals",
       "phase": 2,
       "title": "Monthly goals",
-      "status": "queued",
-      "summary": "MonthlyGoal model (volume / frequency / weight targets). Dashboard card showing progress toward goal."
+      "status": "done",
+      "summary": "MonthlyGoal model (per user+month, nullable session/volume/bodyweight targets). gymapp.services.goals.monthly_goal_progress computes progress from finished sessions, completed working sets (excludes warm-ups), and bodyweight snapshots (baseline-relative, direction-aware). Editor at metrics:goals (upserts current month); progress card on the dashboard + nav 'Metas' link."
     }
   ]
 }

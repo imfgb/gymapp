@@ -10,7 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from gymapp.apps.metrics.models import UserMetricSnapshot
+from gymapp.apps.metrics.models import MonthlyGoal, UserMetricSnapshot
+from gymapp.services.goals import monthly_goal_progress
 
 
 def _decimal_or_none(raw):
@@ -19,6 +20,15 @@ def _decimal_or_none(raw):
     try:
         return Decimal(raw)
     except (InvalidOperation, TypeError):
+        return None
+
+
+def _int_or_none(raw):
+    if raw in (None, ""):
+        return None
+    try:
+        return int(Decimal(raw))
+    except (InvalidOperation, TypeError, ValueError):
         return None
 
 
@@ -86,4 +96,24 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
             "training_styles": TrainingStyle.choices,
             "training_goals": TrainingGoal.choices,
         },
+    )
+
+
+@login_required
+def goal_edit(request: HttpRequest) -> HttpResponse:
+    """Upsert the current month's goal and show progress against it."""
+    today = timezone.localdate()
+    goal, _ = MonthlyGoal.objects.get_or_create(
+        owner=request.user, year=today.year, month=today.month
+    )
+    if request.method == "POST":
+        goal.target_sessions = _int_or_none(request.POST.get("target_sessions"))
+        goal.target_volume_kg = _decimal_or_none(request.POST.get("target_volume_kg"))
+        goal.target_bodyweight_kg = _decimal_or_none(request.POST.get("target_bodyweight_kg"))
+        goal.save()
+        return redirect("metrics:goals")
+    return render(
+        request,
+        "metrics/goals.html",
+        {"goal": goal, "progress": monthly_goal_progress(goal), "today": today},
     )

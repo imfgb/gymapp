@@ -155,13 +155,16 @@ def test_meal_actions_are_owner_scoped(alice, client):
 
 
 @pytest.mark.django_db
-def test_saved_meals_shown_on_nutrition_home(alice, client):
+def test_saved_meals_show_grams_and_per_food_calories(alice, client):
     SavedMeal.objects.create(
         owner=alice,
         slot="breakfast",
-        foods=[{"slug": "chicken", "grams": 150, "protein_g": 47, "carbs_g": 0, "fat_g": 5, "calories": 240}],
-        calories=240,
-        protein_g=47,
+        foods=[
+            {"slug": "chicken", "grams": 150, "protein_g": 47, "carbs_g": 0, "fat_g": 5, "calories": 233},
+            {"slug": "rice", "grams": 80, "protein_g": 6, "carbs_g": 64, "fat_g": 1, "calories": 289},
+        ],
+        calories=522,
+        protein_g=53,
     )
     client.force_login(alice)
     resp = client.get(reverse("nutrition:home"))
@@ -170,3 +173,28 @@ def test_saved_meals_shown_on_nutrition_home(alice, client):
     assert b"Generar comida" in resp.content
     assert b"150 g" in resp.content
     assert b"Pollo" in resp.content
+    # per-food calories shown
+    assert b"233 kcal" in resp.content
+    assert b"289 kcal" in resp.content
+    # final sum shown
+    assert b"522 kcal" in resp.content
+
+
+@pytest.mark.django_db
+def test_saved_meals_ordered_breakfast_lunch_dinner(alice, client):
+    # created out of order; the page lists them by slot order
+    SavedMeal.objects.create(owner=alice, slot="dinner", foods=[], calories=700)
+    SavedMeal.objects.create(owner=alice, slot="breakfast", foods=[], calories=500)
+    SavedMeal.objects.create(owner=alice, slot="lunch", foods=[], calories=600)
+    client.force_login(alice)
+    resp = client.get(reverse("nutrition:home"))
+    body = resp.content.decode()
+    section = body[body.index("Mis comidas"):]
+    assert section.index("Desayuno") < section.index("Comida") < section.index("Cena")
+
+
+@pytest.mark.django_db
+def test_suggested_plan_removed_from_page(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("nutrition:home"))
+    assert b"Plan sugerido" not in resp.content

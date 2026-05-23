@@ -58,33 +58,6 @@
       <p class="mt-2 text-xs text-slate-400">Arma una comida con tus alimentos favoritos. Se guarda abajo y la puedes marcar como hecha o eliminar.</p>
     </section>
   {% endif %}
-
-  {# ============ MEAL PLAN (suggested template) ============ #}
-  <section class="mt-6">
-    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Plan sugerido del día</h2>
-    <div class="grid gap-3 sm:grid-cols-2">
-      {% for slot in meal_plan %}
-        <div class="rounded-lg border border-slate-200 bg-white p-4">
-          <div class="mb-2 flex items-baseline justify-between">
-            <h3 class="font-medium">{{ slot.label }}</h3>
-            <span class="tabular-nums text-sm text-slate-500">{{ slot.calories }} kcal</span>
-          </div>
-          <p class="text-xs tabular-nums text-slate-400">
-            {{ slot.protein_g }}P · {{ slot.carbs_g }}C · {{ slot.fat_g }}G
-          </p>
-          {% if slot.foods %}
-            <ul class="mt-2 flex flex-wrap gap-1">
-              {% for food in slot.foods %}
-                <li class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ food }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="mt-2 text-xs text-slate-400">Sin sugerencias — agrega preferencias de comida.</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </section>
 {% else %}
   <section class="rounded-lg border border-amber-200 bg-amber-50 p-6">
     <h2 class="mb-2 text-lg font-medium text-amber-900">Faltan algunos datos</h2>
@@ -124,7 +97,7 @@
               {% for it in meal.items %}
                 <li class="flex items-baseline justify-between py-1">
                   <span class="text-slate-700">{{ it.label }}{% if it.grams %} · <span class="tabular-nums font-medium">{{ it.grams }} g</span>{% endif %}</span>
-                  <span class="tabular-nums text-xs text-slate-400">{{ it.protein_g }}P · {{ it.carbs_g }}C · {{ it.fat_g }}G</span>
+                  <span class="tabular-nums text-xs text-slate-400">{{ it.calories }} kcal · {{ it.protein_g }}P · {{ it.carbs_g }}C · {{ it.fat_g }}G</span>
                 </li>
               {% endfor %}
             </ul>

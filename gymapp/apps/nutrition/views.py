@@ -13,20 +13,24 @@ from django.views.decorators.http import require_POST
 from gymapp.apps.nutrition.models import SavedMeal
 from gymapp.services.nutrition import (
     MEAL_SLOTS,
-    build_meal_plan,
     clean_food_preferences,
     daily_target_for_user,
     generate_meal,
     grouped_catalog,
 )
 
+# Display order for "Mis comidas": breakfast → lunch → dinner → snack.
+_SLOT_ORDER = {key: i for i, (key, _, _) in enumerate(MEAL_SLOTS)}
+
 
 @login_required
 def home(request: HttpRequest) -> HttpResponse:
     profile = request.user.profile
     target, missing = daily_target_for_user(request.user)
-    meal_plan = build_meal_plan(target, profile.food_preferences) if target else []
-    saved_meals = list(SavedMeal.objects.for_user(request.user)[:20])
+    saved_meals = sorted(
+        SavedMeal.objects.for_user(request.user)[:50],
+        key=lambda m: (_SLOT_ORDER.get(m.slot, 9), m.created_at),
+    )
     return render(
         request,
         "nutrition/home.html",
@@ -35,7 +39,6 @@ def home(request: HttpRequest) -> HttpResponse:
             "missing": missing,
             "goal": profile.training_goal,
             "preference_count": len(profile.food_preferences or []),
-            "meal_plan": meal_plan,
             "saved_meals": saved_meals,
             "slot_choices": [(key, label) for key, label, _ in MEAL_SLOTS],
             "has_preferences": bool(profile.food_preferences),

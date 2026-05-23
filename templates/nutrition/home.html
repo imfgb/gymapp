@@ -40,9 +40,28 @@
     Ajusta tu meta y datos en <a href="{% url 'metrics:profile' %}" class="underline">tu perfil</a>.
   </p>
 
-  {# ============ MEAL PLAN ============ #}
-  <section class="mt-8">
-    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Tu plan de comidas</h2>
+  {# ============ GENERATE A MEAL ============ #}
+  {% if has_preferences %}
+    <section class="mt-8 rounded-lg border border-slate-200 bg-white p-4">
+      <form method="post" action="{% url 'nutrition:generate_meal' %}" class="flex flex-wrap items-end gap-2">
+        {% csrf_token %}
+        <label class="text-xs text-slate-500">
+          <span class="mb-1 block">Generar una comida de</span>
+          <select name="slot" class="block w-44 rounded-md border border-slate-300 px-3 py-2 text-sm">
+            {% for value, label in slot_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">Generar comida</button>
+      </form>
+      <p class="mt-2 text-xs text-slate-400">Arma una comida con tus alimentos favoritos. Se guarda abajo y la puedes marcar como hecha o eliminar.</p>
+    </section>
+  {% endif %}
+
+  {# ============ MEAL PLAN (suggested template) ============ #}
+  <section class="mt-6">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Plan sugerido del día</h2>
     <div class="grid gap-3 sm:grid-cols-2">
       {% for slot in meal_plan %}
         <div class="rounded-lg border border-slate-200 bg-white p-4">
@@ -88,6 +107,46 @@
     </div>
   </section>
 {% endif %}
+
+{# ============ MIS COMIDAS (saved/generated meals) ============ #}
+<section class="mt-6">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Mis comidas</h2>
+  {% if saved_meals %}
+    <ul class="space-y-2">
+      {% for meal in saved_meals %}
+        <li class="rounded-lg border p-4 {% if meal.eaten_at %}border-emerald-200 bg-emerald-50{% else %}border-slate-200 bg-white{% endif %}">
+          <div class="flex items-baseline justify-between">
+            <span class="font-medium">{{ meal.get_slot_display }}</span>
+            <span class="tabular-nums text-sm text-slate-500">{{ meal.calories }} kcal · {{ meal.protein_g }}P · {{ meal.carbs_g }}C · {{ meal.fat_g }}G</span>
+          </div>
+          {% if meal.food_labels %}
+            <ul class="mt-2 flex flex-wrap gap-1">
+              {% for food in meal.food_labels %}
+                <li class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ food }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <div class="mt-3 flex items-center gap-3">
+            <form method="post" action="{% url 'nutrition:meal_done' meal.id %}">
+              {% csrf_token %}
+              {% if meal.eaten_at %}
+                <button class="text-sm font-medium text-emerald-700 hover:underline">✓ Hecha a las {{ meal.eaten_at|date:"H:i" }} · deshacer</button>
+              {% else %}
+                <button class="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-ink hover:bg-brand-dark">Marcar hecha</button>
+              {% endif %}
+            </form>
+            <form method="post" action="{% url 'nutrition:meal_delete' meal.id %}">
+              {% csrf_token %}
+              <button class="text-sm text-slate-400 hover:text-red-600">Eliminar</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-slate-500">Aún no has generado comidas. Usa "Generar comida" arriba.</p>
+  {% endif %}
+</section>
 
 {# Food preferences are independent of having a complete profile for the calorie calc. #}
 <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5">

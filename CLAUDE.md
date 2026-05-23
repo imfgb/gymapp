@@ -126,7 +126,7 @@ gymapp/                              # repo root
 | `workouts` | Actual training sessions and set-by-set logs. Drives the interactive checklist. | `WorkoutSession`, `ExerciseLog`, `SetLog` |
 | `prs` | Personal records per exercise per rep-count. Auto-detected from finished `SetLog`s + manual overrides. | `PersonalRecord` |
 | `metrics` | Body composition snapshots + per-month goals. | `UserMetricSnapshot`, `MonthlyGoal` |
-| `nutrition` | Read-only nutrition page: today's calorie + macro target (computed by `services.nutrition`). Meal-slot models land with Phase 3 meal-slots. | (no models yet) |
+| `nutrition` | Nutrition page: calorie + macro target, suggested plan, food preferences, and user-generated saved meals (generate from prefs / mark eaten / delete). | `SavedMeal` |
 | `dashboard` | Read-only views: today's workout, this week's split, recent history, PR highlights. | (no models) |
 
 ---
@@ -141,7 +141,7 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `progression` | `recommend_next` returns the last completed weight×reps. | Linear/double progression → RPE-driven → AI-tuned. |
 | `substitution` | Delegates to `exercise_library`. | Multi-factor scoring (Phase 2). |
 | `coaching` | Facade re-exporting `progression` + `substitution`; `blocks` submodule = deterministic 6-week block templates + `block_status`. | AI-orchestrated programming (Phase 4, skipped). |
-| `nutrition` | `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE → goal-adjusted calories → macro split. `daily_target_for_user`. | AI meal rec (Phase 4). |
+| `nutrition` | `DeterministicNutrition` (BMR→TDEE→macros), `daily_target_for_user`, `FOOD_CATALOG`, `build_meal_plan` (deterministic plan) + `generate_meal` (varied, for saved meals). | AI meal rec (Phase 4, skipped). |
 | `analytics` | `weekly_volume` + `sets_by_muscle` + `deload_recommendation`. Powers `/progreso/` + deload alerts. | PR cadence, intensity heatmaps (Phase 5 cont.). |
 
 **The AI seam:** every service exposes a `Strategy` (Protocol) and a `Deterministic*` implementation. A future `LLMStrategy` (Claude API) can be selected via settings without touching call sites. Document the contract in `docs/service_layer.md`.
@@ -300,6 +300,12 @@ Detail → `ROADMAP.md`.
 
 **Phase 5 — Polish: complete (2026-05-23).** Exit criterion met: the dashboard surfaces the current block plan, a deload recommendation when warranted, and weekly volume trends (via `/progreso/`). **Phases 1, 2, 3, 5 are all done; Phase 4 (AI) intentionally skipped (no budget).** The deterministic app is feature-complete per the roadmap.
 
+**Post-roadmap enhancements (user-requested, all deterministic/free):**
+
+- **nutrition-meals-plus** (2026-05-23): bigger `FOOD_CATALOG` (whey concentrate/isolate, casein, salmon, seitan, edamame, soy/pea protein, brown rice, banana, chia, …). `services.nutrition.generate_meal(slot, target, prefs, rng)` samples a *varied* meal from preferences (random within each category, unlike the deterministic `build_meal_plan` used for the at-a-glance plan). New `nutrition.SavedMeal` model (slot, foods, macro snapshot, `eaten_at`) + views to generate (`nutrition:generate_meal`), toggle eaten with a timestamp (`nutrition:meal_done`), and delete (`nutrition:meal_delete`). The nutrition page now has a "Generar comida" control + a "Mis comidas" log.
+
+**Next up (user roadmap, confirmed 2026-05-23):** (1) **Fatigue/readiness** module — per-muscle fatigue that decays over days (deadlift → lumbar stays fatigued longer) + daily sleep/stress/soreness inputs → "hoy no vayas pesado" advice. User chose **auto + manual adjust**. (2) **Rehab/prevention** — corrective/mobility library + injury log + avoid/swap rules. Both deterministic/free.
+
 **Bug fixes applied (2026-05-21):**
 
 1. **Set numbering**: `delete_set` renumbers sibling `SetLog.ordering` to stay contiguous. Previously deleting set #2 of 3 caused "1., 3., 3., 4." on next add.
@@ -308,7 +314,7 @@ Detail → `ROADMAP.md`.
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 212 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), analytics (weekly volume + sets-per-muscle + deload recommendation + Progreso page), block-programming (block templates service + block page/view), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 223 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), analytics (weekly volume + sets-per-muscle + deload recommendation + Progreso page), block-programming (block templates service + block page/view), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

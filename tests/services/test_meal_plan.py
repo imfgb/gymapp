@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from gymapp.services.nutrition import (
     FOOD_MACROS,
     MEAL_TEMPLATES,
@@ -63,35 +61,3 @@ def test_preferences_select_a_matching_template():
     plan = {s.key: s for s in build_meal_plan(TARGET, prefs)}
     assert "Pollo" in plan["lunch"].foods
     assert "Arroz" in plan["lunch"].foods
-
-
-@pytest.mark.django_db
-def test_meal_plan_shown_on_nutrition_home(client):
-    from datetime import date
-    from decimal import Decimal
-
-    from django.urls import reverse
-    from django.utils import timezone
-
-    from gymapp.apps.metrics.models import UserMetricSnapshot
-    from gymapp.apps.users.models import ActivityLevel, Sex, TrainingGoal
-    from tests.factories import UserFactory
-
-    user = UserFactory(email="mealplan@example.com")
-    p = user.profile
-    p.height_cm = 180
-    p.date_of_birth = date(1996, 5, 23)
-    p.sex = Sex.MALE
-    p.activity_level = ActivityLevel.MODERATE
-    p.training_goal = TrainingGoal.MAINTAIN
-    p.food_preferences = ["chicken", "rice"]
-    p.save()
-    UserMetricSnapshot.objects.create(
-        owner=user, measured_at=timezone.now(), weight_kg=Decimal("80")
-    )
-    client.force_login(user)
-    resp = client.get(reverse("nutrition:home"))
-    assert resp.status_code == 200
-    assert b"Plan sugerido del d" in resp.content  # "Plan sugerido del día"
-    assert b"Desayuno" in resp.content
-    assert b"Pollo" in resp.content

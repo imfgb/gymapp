@@ -28,10 +28,14 @@ TARGET = MacroTarget(calories=2000, protein_g=160, carbs_g=200, fat_g=60)
 # ---------------------------------------------------------------------------
 
 
-def test_catalog_has_new_proteins_and_carbs():
+def test_catalog_keeps_kept_foods_and_drops_removed():
     slugs = all_food_slugs()
-    for slug in ("whey_isolate", "whey_concentrate", "salmon", "seitan", "brown_rice", "chia"):
-        assert slug in slugs
+    for kept in ("whey_isolate", "whey_concentrate", "casein", "salmon", "brown_rice", "banana"):
+        assert kept in slugs
+    for removed in ("pea_protein", "whey", "cottage_cheese", "seitan", "edamame",
+                    "soy_protein", "tempeh", "fruit", "kale", "egg_yolk", "chia",
+                    "flax", "walnuts"):
+        assert removed not in slugs
 
 
 # ---------------------------------------------------------------------------
@@ -39,27 +43,30 @@ def test_catalog_has_new_proteins_and_carbs():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_meal_picks_from_preferences_within_categories():
-    foods, macros = generate_meal(
+def test_generate_meal_picks_from_preferences_with_grams():
+    meal = generate_meal(
         "breakfast", TARGET, ["chicken", "rice", "avocado"], rng=random.Random(0)  # noqa: S311
     )
-    # breakfast = protein/carb/fat → one from each
-    assert set(foods) == {"chicken", "rice", "avocado"}
-    assert macros.calories == 500  # 2000 * 0.25
-    assert macros.protein_g == 40
+    # breakfast = protein/carb/fat → one from each, each with raw grams
+    assert {i.slug for i in meal.items} == {"chicken", "rice", "avocado"}
+    assert all(i.grams > 0 for i in meal.items)
+    # protein source is sized to hit the slot's protein share (~40 g)
+    assert meal.protein_g >= 38
+    # totals equal the sum of the items
+    assert meal.calories == sum(i.calories for i in meal.items)
 
 
-def test_generate_meal_empty_preferences_gives_no_foods():
-    foods, macros = generate_meal("lunch", TARGET, [], rng=random.Random(1))  # noqa: S311
-    assert foods == []
-    assert macros.calories == 700  # 2000 * 0.35
+def test_generate_meal_empty_preferences_gives_no_items():
+    meal = generate_meal("lunch", TARGET, [], rng=random.Random(1))  # noqa: S311
+    assert meal.items == []
+    assert meal.calories == 0
 
 
 def test_generate_meal_only_uses_liked_items():
     prefs = ["chicken", "beef", "salmon", "rice", "broccoli"]
     for seed in range(5):
-        foods, _ = generate_meal("lunch", TARGET, prefs, rng=random.Random(seed))  # noqa: S311
-        assert set(foods).issubset(set(prefs))
+        meal = generate_meal("lunch", TARGET, prefs, rng=random.Random(seed))  # noqa: S311
+        assert {i.slug for i in meal.items}.issubset(set(prefs))
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +99,8 @@ def test_generate_meal_view_creates_saved_meal(alice, client):
     meal = SavedMeal.objects.get(owner=alice)
     assert meal.slot == "breakfast"
     assert meal.foods  # non-empty
+    assert isinstance(meal.foods[0], dict)
+    assert meal.foods[0]["grams"] > 0
     assert meal.calories > 0
 
 
@@ -144,9 +153,17 @@ def test_meal_actions_are_owner_scoped(alice, client):
 
 @pytest.mark.django_db
 def test_saved_meals_shown_on_nutrition_home(alice, client):
-    SavedMeal.objects.create(owner=alice, slot="breakfast", foods=["chicken", "rice"], calories=600)
+    SavedMeal.objects.create(
+        owner=alice,
+        slot="breakfast",
+        foods=[{"slug": "chicken", "grams": 150, "protein_g": 47, "carbs_g": 0, "fat_g": 5, "calories": 240}],
+        calories=240,
+        protein_g=47,
+    )
     client.force_login(alice)
     resp = client.get(reverse("nutrition:home"))
     assert resp.status_code == 200
     assert b"Mis comidas" in resp.content
     assert b"Generar comida" in resp.content
+    assert b"150 g" in resp.content
+    assert b"Pollo" in resp.content

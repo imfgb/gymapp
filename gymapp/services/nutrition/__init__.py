@@ -52,7 +52,6 @@ FAT_G_PER_KG = 0.8
 # list of these slugs (no DB catalogue needed for a deterministic stub plan).
 FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
     "protein": [
-        # whole-food animal
         ("chicken", "Pollo"),
         ("beef", "Res"),
         ("lean_beef", "Bistec magro"),
@@ -68,19 +67,10 @@ FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
         ("turkey_ham", "Jamón de pavo"),
         ("shrimp", "Camarón"),
         ("greek_yogurt", "Yogur griego"),
-        ("cottage_cheese", "Requesón"),
-        # supplements
-        ("whey", "Proteína whey"),
         ("whey_concentrate", "Whey concentrada"),
         ("whey_isolate", "Whey aislada"),
         ("casein", "Caseína"),
-        # plant-based
         ("tofu", "Tofu"),
-        ("tempeh", "Tempeh"),
-        ("seitan", "Seitán"),
-        ("edamame", "Edamame"),
-        ("soy_protein", "Proteína de soya"),
-        ("pea_protein", "Proteína de chícharo"),
     ],
     "carb": [
         ("rice", "Arroz"),
@@ -97,7 +87,6 @@ FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
         ("lentils", "Lentejas"),
         ("chickpeas", "Garbanzos"),
         ("quinoa", "Quinoa"),
-        ("fruit", "Fruta"),
         ("banana", "Plátano"),
         ("rice_cakes", "Tortitas de arroz"),
         ("granola", "Granola"),
@@ -106,7 +95,6 @@ FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
     "vegetable": [
         ("broccoli", "Brócoli"),
         ("spinach", "Espinaca"),
-        ("kale", "Kale"),
         ("lettuce", "Lechuga"),
         ("tomato", "Jitomate"),
         ("carrot", "Zanahoria"),
@@ -124,16 +112,81 @@ FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
         ("olive_oil", "Aceite de oliva"),
         ("coconut_oil", "Aceite de coco"),
         ("nuts", "Nueces"),
-        ("walnuts", "Nueces de Castilla"),
         ("almonds", "Almendras"),
         ("peanut_butter", "Crema de cacahuate"),
         ("almond_butter", "Crema de almendra"),
-        ("chia", "Chía"),
-        ("flax", "Linaza"),
         ("cheese", "Queso"),
         ("dark_chocolate", "Chocolate amargo"),
-        ("egg_yolk", "Yema de huevo"),
     ],
+}
+
+# Macros per 100 g, RAW/DRY weight (protein, carbs, fat). Approximate reference
+# values — enough to size portions and explain a meal's macros. Grains/legumes
+# are dry; meats/veg are raw; powders are per 100 g of powder.
+FOOD_MACROS: dict[str, tuple[float, float, float]] = {
+    # protein
+    "chicken": (31, 0, 3.6),
+    "beef": (26, 0, 15),
+    "lean_beef": (27, 0, 8),
+    "ground_beef": (20, 0, 10),
+    "eggs": (13, 1, 11),
+    "egg_whites": (11, 1, 0),
+    "fish": (20, 0, 2),
+    "salmon": (20, 0, 13),
+    "tuna": (26, 0, 1),
+    "sardines": (25, 0, 11),
+    "pork": (21, 0, 6),
+    "turkey": (29, 0, 1),
+    "turkey_ham": (17, 2, 3),
+    "shrimp": (20, 0, 1),
+    "greek_yogurt": (10, 4, 0.4),
+    "whey_concentrate": (75, 10, 6),
+    "whey_isolate": (90, 2, 1),
+    "casein": (78, 8, 2),
+    "tofu": (12, 2, 7),
+    # carb
+    "rice": (7, 80, 1),
+    "brown_rice": (7, 76, 3),
+    "oats": (13, 67, 7),
+    "potato": (2, 17, 0),
+    "sweet_potato": (2, 20, 0),
+    "pasta": (12, 75, 1.5),
+    "bread": (9, 49, 3),
+    "whole_wheat_bread": (12, 43, 3),
+    "tortilla": (6, 45, 2),
+    "corn": (3, 19, 1),
+    "beans": (21, 63, 1),
+    "lentils": (25, 60, 1),
+    "chickpeas": (19, 61, 6),
+    "quinoa": (14, 64, 6),
+    "banana": (1, 23, 0),
+    "rice_cakes": (8, 82, 3),
+    "granola": (10, 64, 15),
+    "honey": (0, 82, 0),
+    # vegetable
+    "broccoli": (3, 7, 0),
+    "spinach": (3, 4, 0),
+    "lettuce": (1, 3, 0),
+    "tomato": (1, 4, 0),
+    "carrot": (1, 10, 0),
+    "zucchini": (1, 3, 0),
+    "pepper": (1, 6, 0),
+    "cucumber": (1, 4, 0),
+    "onion": (1, 9, 0),
+    "mushroom": (3, 3, 0),
+    "green_beans": (2, 7, 0),
+    "asparagus": (2, 4, 0),
+    "nopal": (1, 3, 0),
+    # fat
+    "avocado": (2, 9, 15),
+    "olive_oil": (0, 0, 100),
+    "coconut_oil": (0, 0, 100),
+    "nuts": (15, 20, 55),
+    "almonds": (21, 22, 49),
+    "peanut_butter": (25, 20, 50),
+    "almond_butter": (21, 19, 55),
+    "cheese": (25, 1, 33),
+    "dark_chocolate": (8, 46, 43),
 }
 
 FOOD_CATEGORY_LABELS: dict[str, str] = {
@@ -251,30 +304,80 @@ def slot_label(slot_key: str) -> str:
     return _SLOT_LABEL.get(slot_key, slot_key)
 
 
+_CATEGORY_MACRO_INDEX = {"protein": 0, "carb": 1, "fat": 2}
+_VEGETABLE_GRAMS = 120
+
+
+@dataclass(frozen=True)
+class MealItem:
+    slug: str
+    grams: int
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+    calories: int
+
+
+@dataclass(frozen=True)
+class GeneratedMeal:
+    items: list[MealItem]
+    calories: int
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+
+
+def _item_from_grams(slug: str, grams: float) -> MealItem:
+    p100, c100, f100 = FOOD_MACROS.get(slug, (0, 0, 0))
+    g = max(5, min(500, int(round(grams / 5) * 5)))  # snap to 5 g, clamp
+    p, c, f = g * p100 / 100, g * c100 / 100, g * f100 / 100
+    return MealItem(
+        slug=slug,
+        grams=g,
+        protein_g=round(p),
+        carbs_g=round(c),
+        fat_g=round(f),
+        calories=round(p * 4 + c * 4 + f * 9),
+    )
+
+
 def generate_meal(
     slot_key: str, target: MacroTarget, preferences, rng: random.Random | None = None
-) -> tuple[list[str], MacroTarget]:
-    """Pick one concrete meal for a slot from the user's liked foods.
+) -> GeneratedMeal:
+    """Build one concrete meal for a slot from the user's liked foods.
 
-    Unlike `build_meal_plan` (which rotates deterministically for the at-a-glance
-    plan), this samples randomly within each category so pressing "generar otra"
-    yields variety. Returns (food_slugs, macro_split_for_this_slot).
+    Picks a food per slot category (randomly, so "generar otra" varies), sizes
+    each in **raw grams** so its namesake macro hits this slot's share of the
+    daily target (protein source → protein, carb → carbs, fat → fat; vegetables
+    get a fixed serving). The meal's macros are then summed from those grams, so
+    grams and macros are always consistent and self-explanatory.
     """
     chooser = rng or random
     by_cat = _preferences_by_category(preferences)
     pct = _SLOT_FRACTION.get(slot_key, 0.25)
-    foods: list[str] = []
+    macro_target = (target.protein_g * pct, target.carbs_g * pct, target.fat_g * pct)
+
+    items: list[MealItem] = []
     for cat in SLOT_COMPONENTS.get(slot_key, ()):
         liked = by_cat.get(cat) or []
-        if liked:
-            foods.append(chooser.choice(liked))
-    macros = MacroTarget(
-        calories=round(target.calories * pct),
-        protein_g=round(target.protein_g * pct),
-        carbs_g=round(target.carbs_g * pct),
-        fat_g=round(target.fat_g * pct),
+        if not liked:
+            continue
+        slug = chooser.choice(liked)
+        if cat == "vegetable":
+            items.append(_item_from_grams(slug, _VEGETABLE_GRAMS))
+            continue
+        idx = _CATEGORY_MACRO_INDEX[cat]
+        density = FOOD_MACROS.get(slug, (0, 0, 0))[idx] / 100
+        grams = macro_target[idx] / density if density else 100
+        items.append(_item_from_grams(slug, grams))
+
+    return GeneratedMeal(
+        items=items,
+        calories=sum(i.calories for i in items),
+        protein_g=sum(i.protein_g for i in items),
+        carbs_g=sum(i.carbs_g for i in items),
+        fat_g=sum(i.fat_g for i in items),
     )
-    return foods, macros
 
 
 @dataclass(frozen=True)

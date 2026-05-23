@@ -119,12 +119,16 @@
             <span class="font-medium">{{ meal.get_slot_display }}</span>
             <span class="tabular-nums text-sm text-slate-500">{{ meal.calories }} kcal · {{ meal.protein_g }}P · {{ meal.carbs_g }}C · {{ meal.fat_g }}G</span>
           </div>
-          {% if meal.food_labels %}
-            <ul class="mt-2 flex flex-wrap gap-1">
-              {% for food in meal.food_labels %}
-                <li class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{{ food }}</li>
+          {% if meal.items %}
+            <ul class="mt-2 divide-y divide-slate-100 text-sm">
+              {% for it in meal.items %}
+                <li class="flex items-baseline justify-between py-1">
+                  <span class="text-slate-700">{{ it.label }}{% if it.grams %} · <span class="tabular-nums font-medium">{{ it.grams }} g</span>{% endif %}</span>
+                  <span class="tabular-nums text-xs text-slate-400">{{ it.protein_g }}P · {{ it.carbs_g }}C · {{ it.fat_g }}G</span>
+                </li>
               {% endfor %}
             </ul>
+            <p class="mt-1 text-xs text-slate-400">Gramos en crudo.</p>
           {% endif %}
           <div class="mt-3 flex items-center gap-3">
             <form method="post" action="{% url 'nutrition:meal_done' meal.id %}">

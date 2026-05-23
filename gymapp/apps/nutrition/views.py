@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -51,15 +53,15 @@ def generate_meal_view(request: HttpRequest) -> HttpResponse:
     slot = request.POST.get("slot")
     if slot not in SavedMeal.Slot.values:
         return HttpResponseBadRequest("slot inválido")
-    foods, macros = generate_meal(slot, target, profile.food_preferences)
+    meal = generate_meal(slot, target, profile.food_preferences)
     SavedMeal.objects.create(
         owner=request.user,
         slot=slot,
-        foods=foods,
-        calories=macros.calories,
-        protein_g=macros.protein_g,
-        carbs_g=macros.carbs_g,
-        fat_g=macros.fat_g,
+        foods=[asdict(i) for i in meal.items],
+        calories=meal.calories,
+        protein_g=meal.protein_g,
+        carbs_g=meal.carbs_g,
+        fat_g=meal.fat_g,
     )
     return redirect("nutrition:home")
 

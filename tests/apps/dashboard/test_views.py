@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from gymapp.apps.dashboard.views import build_week_view
-from gymapp.apps.metrics.models import UserMetricSnapshot
+from gymapp.apps.metrics.models import MonthlyGoal, UserMetricSnapshot
 from gymapp.apps.routines.models import Routine, RoutineDay, SkippedDay, WeeklySplit
 from gymapp.services import workouts as workouts_service
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
@@ -172,6 +172,27 @@ def test_dashboard_redirects_anon_to_login(client):
     resp = client.get(reverse("dashboard:home"))
     assert resp.status_code == 302
     assert "/auth/login/" in resp.url
+
+
+@pytest.mark.django_db
+def test_dashboard_shows_monthly_goal_progress(alice, client):
+    today = timezone.localdate()
+    MonthlyGoal.objects.create(
+        owner=alice, year=today.year, month=today.month, target_sessions=12
+    )
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:home"))
+    assert resp.status_code == 200
+    assert b"Metas del mes" in resp.content
+    assert b"Entrenamientos" in resp.content
+
+
+@pytest.mark.django_db
+def test_dashboard_goal_card_prompts_when_unset(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:home"))
+    assert resp.status_code == 200
+    assert b"Fija tus metas de este mes" in resp.content
 
 
 @pytest.mark.django_db

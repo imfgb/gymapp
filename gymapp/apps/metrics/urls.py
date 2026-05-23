@@ -9,4 +9,5 @@ urlpatterns = [
     path("new/", views.snapshot_create, name="create"),
     path("<int:snapshot_id>/delete/", views.snapshot_delete, name="delete"),
     path("profile/", views.profile_edit, name="profile"),
+    path("goals/", views.goal_edit, name="goals"),
 ]

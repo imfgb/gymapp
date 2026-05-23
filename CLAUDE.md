@@ -277,8 +277,9 @@ Detail → `ROADMAP.md`.
 
 - **substitution-scoring** (2026-05-22): deterministic multi-factor scorer in `services/substitution` (primary/secondary muscle Jaccard overlap, curated-graph bonus, equipment match/availability, category). `ranked_alternatives()` powers a "Cambiar" swap UI on the session exercise card → ranked list → swap (refuses once a set is completed). Satisfies the Phase 2 exit criterion "swap exercise returns ranked alternatives".
 - **warmup-generation** (2026-05-22): `services/warmup.warmup_scheme()` ramps 40/60/80% of the working weight, snapped to **loadable** weights per equipment (barbell/smith → 5 kg steps @ 20 kg bar, since the smallest plate 2.5 kg loads both sides; ez-bar → 5 kg @ 10 kg; else 2.5 kg), never ≥ working. **Auto-generated on session start** for barbell/smith lifts with a known weight (`AUTO_WARMUP_EQUIPMENT`); per-exercise **"Calentamiento"** button (`workouts:add_warmups`, idempotent regen) for the rest. Warm-ups stay excluded from the progress counter and PRs.
+- **monthly-goals** (2026-05-22): `metrics.MonthlyGoal` (one row per `owner` + `year` + `month`; unique constraint + month-range CHECK; nullable `target_sessions` / `target_volume_kg` / `target_bodyweight_kg`, migration `metrics.0002`). New service `gymapp.services.goals.monthly_goal_progress(goal)` returns `GoalMetric` rows (only for targets that are set): sessions = count of FINISHED sessions started in the month; volume = `Sum(weight_kg * reps)` over completed, non-warm-up working sets; bodyweight = baseline-relative progress (baseline = latest snapshot before the month) that fills toward the target in either direction (cut or bulk), `reached` within ±0.5 kg. Editor at `metrics:goals` (GET shows progress bars, POST upserts the current month). Dashboard "Metas del mes" card (between week view and the recent grid) + nav **"Metas"** link. **This completes Phase 2.**
 
-Phase 2 features still queued: **monthly-goals (last one)**.
+**Phase 2 — Programming: complete (2026-05-22).** All Phase 2 features in `.claude/feature_list.json` are `done`. Both exit criteria met: recommended weight×reps on every working set (progression), and "swap exercise returns ranked alternatives" (substitution-scoring). Next: **Phase 3 — Nutrition** (BMR / TDEE / macros), per ROADMAP.md.
 
 **Bug fixes applied (2026-05-21):**
 
@@ -288,7 +289,7 @@ Phase 2 features still queued: **monthly-goals (last one)**.
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 116 tests passing (2026-05-22).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 154 tests passing (2026-05-22).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `gym1234`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

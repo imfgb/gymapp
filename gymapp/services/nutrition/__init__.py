@@ -142,6 +142,71 @@ def clean_food_preferences(slugs) -> list[str]:
     return [slug for slug in _FOOD_LABELS if slug in chosen]
 
 
+# Daily target split across four meal slots (fractions sum to 1.0).
+MEAL_SLOTS: list[tuple[str, str, float]] = [
+    ("breakfast", "Desayuno", 0.25),
+    ("lunch", "Comida", 0.35),
+    ("dinner", "Cena", 0.30),
+    ("snack", "Snack", 0.10),
+]
+
+# Which food categories each slot suggests, drawn from the user's preferences.
+SLOT_COMPONENTS: dict[str, tuple[str, ...]] = {
+    "breakfast": ("protein", "carb", "fat"),
+    "lunch": ("protein", "carb", "vegetable"),
+    "dinner": ("protein", "vegetable", "fat"),
+    "snack": ("protein", "carb"),
+}
+
+
+@dataclass(frozen=True)
+class MealSlot:
+    key: str
+    label: str
+    calories: int
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+    foods: list[str]
+
+
+def _preferences_by_category(preferences) -> dict[str, list[str]]:
+    chosen = set(preferences or [])
+    return {
+        cat: [slug for slug, _ in items if slug in chosen]
+        for cat, items in FOOD_CATALOG.items()
+    }
+
+
+def build_meal_plan(target: MacroTarget, preferences=None) -> list[MealSlot]:
+    """Split a daily `MacroTarget` into four slots and suggest foods per slot.
+
+    Foods are rotated through the user's liked items per category (by slot
+    index) so slots differ; a category with no liked items contributes nothing.
+    Deterministic stub — no AI (CLAUDE.md §15).
+    """
+    by_cat = _preferences_by_category(preferences)
+    slots: list[MealSlot] = []
+    for idx, (key, label, pct) in enumerate(MEAL_SLOTS):
+        foods: list[str] = []
+        for cat in SLOT_COMPONENTS[key]:
+            liked = by_cat.get(cat) or []
+            if liked:
+                foods.append(food_label(liked[idx % len(liked)]))
+        slots.append(
+            MealSlot(
+                key=key,
+                label=label,
+                calories=round(target.calories * pct),
+                protein_g=round(target.protein_g * pct),
+                carbs_g=round(target.carbs_g * pct),
+                fat_g=round(target.fat_g * pct),
+                foods=foods,
+            )
+        )
+    return slots
+
+
 @dataclass(frozen=True)
 class MacroTarget:
     calories: int

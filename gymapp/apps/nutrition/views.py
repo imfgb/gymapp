@@ -7,6 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 
 from gymapp.services.nutrition import (
+    build_meal_plan,
     clean_food_preferences,
     daily_target_for_user,
     grouped_catalog,
@@ -15,15 +16,18 @@ from gymapp.services.nutrition import (
 
 @login_required
 def home(request: HttpRequest) -> HttpResponse:
+    profile = request.user.profile
     target, missing = daily_target_for_user(request.user)
+    meal_plan = build_meal_plan(target, profile.food_preferences) if target else []
     return render(
         request,
         "nutrition/home.html",
         {
             "target": target,
             "missing": missing,
-            "goal": request.user.profile.training_goal,
-            "preference_count": len(request.user.profile.food_preferences or []),
+            "goal": profile.training_goal,
+            "preference_count": len(profile.food_preferences or []),
+            "meal_plan": meal_plan,
         },
     )
 

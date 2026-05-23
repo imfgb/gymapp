@@ -117,8 +117,8 @@
       "id": "phase3-meal-slots",
       "phase": 3,
       "title": "Basic meal slot scaffolding",
-      "status": "queued",
-      "summary": "Breakfast/lunch/dinner/snack stub templates that draw from the user's food preferences, shown on the Nutrition page. Satisfies the Phase 3 exit criterion (daily target + meal plan respecting preferences)."
+      "status": "done",
+      "summary": "services.nutrition.build_meal_plan(target, preferences) splits the daily MacroTarget across 4 slots (MEAL_SLOTS: breakfast 25% / lunch 35% / dinner 30% / snack 10%) and suggests foods per slot from the user's preferences (SLOT_COMPONENTS categories, rotated by slot index). Rendered on the Nutrition page below the macros. Closes the Phase 3 exit criterion."
     }
   ]
 }

@@ -45,6 +45,102 @@ PROTEIN_G_PER_KG = 2.0
 PROTEIN_G_PER_KG_CUT = 2.2  # higher on a deficit to spare lean mass
 FAT_G_PER_KG = 0.8
 
+# Curated food catalogue: English slug (domain) → Spanish label (UI). Grouped by
+# macro role so the meal-slot scaffolding can pull a protein + carb + veg + fat
+# from the user's liked items. Preferences are stored on `Profile` as a flat
+# list of these slugs (no DB catalogue needed for a deterministic stub plan).
+FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
+    "protein": [
+        ("chicken", "Pollo"),
+        ("beef", "Res"),
+        ("eggs", "Huevo"),
+        ("fish", "Pescado"),
+        ("tuna", "Atún"),
+        ("pork", "Cerdo"),
+        ("turkey", "Pavo"),
+        ("shrimp", "Camarón"),
+        ("tofu", "Tofu"),
+        ("greek_yogurt", "Yogur griego"),
+        ("whey", "Proteína whey"),
+        ("cottage_cheese", "Requesón"),
+    ],
+    "carb": [
+        ("rice", "Arroz"),
+        ("oats", "Avena"),
+        ("potato", "Papa"),
+        ("sweet_potato", "Camote"),
+        ("pasta", "Pasta"),
+        ("bread", "Pan"),
+        ("tortilla", "Tortilla"),
+        ("beans", "Frijoles"),
+        ("lentils", "Lentejas"),
+        ("quinoa", "Quinoa"),
+        ("fruit", "Fruta"),
+    ],
+    "vegetable": [
+        ("broccoli", "Brócoli"),
+        ("spinach", "Espinaca"),
+        ("lettuce", "Lechuga"),
+        ("tomato", "Jitomate"),
+        ("carrot", "Zanahoria"),
+        ("zucchini", "Calabacita"),
+        ("pepper", "Pimiento"),
+        ("cucumber", "Pepino"),
+        ("onion", "Cebolla"),
+        ("mushroom", "Champiñón"),
+        ("nopal", "Nopal"),
+    ],
+    "fat": [
+        ("avocado", "Aguacate"),
+        ("olive_oil", "Aceite de oliva"),
+        ("nuts", "Nueces"),
+        ("peanut_butter", "Crema de cacahuate"),
+        ("almonds", "Almendras"),
+        ("cheese", "Queso"),
+    ],
+}
+
+FOOD_CATEGORY_LABELS: dict[str, str] = {
+    "protein": "Proteínas",
+    "carb": "Carbohidratos",
+    "vegetable": "Verduras",
+    "fat": "Grasas",
+}
+
+_FOOD_LABELS: dict[str, str] = {
+    slug: label for items in FOOD_CATALOG.values() for slug, label in items
+}
+
+
+def all_food_slugs() -> set[str]:
+    return set(_FOOD_LABELS)
+
+
+def food_label(slug: str) -> str:
+    return _FOOD_LABELS.get(slug, slug)
+
+
+def grouped_catalog(selected: list[str] | None = None) -> list[dict]:
+    """Catalogue grouped by category for rendering, marking selected items."""
+    chosen = set(selected or [])
+    return [
+        {
+            "key": key,
+            "label": FOOD_CATEGORY_LABELS[key],
+            "items": [
+                {"slug": slug, "label": label, "selected": slug in chosen}
+                for slug, label in items
+            ],
+        }
+        for key, items in FOOD_CATALOG.items()
+    ]
+
+
+def clean_food_preferences(slugs) -> list[str]:
+    """Keep only known slugs, deduped, in catalogue order."""
+    chosen = set(slugs or [])
+    return [slug for slug in _FOOD_LABELS if slug in chosen]
+
 
 @dataclass(frozen=True)
 class MacroTarget:

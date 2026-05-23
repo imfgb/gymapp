@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from gymapp.services.nutrition import MacroTarget, build_meal_plan
+from gymapp.services.nutrition import (
+    FOOD_MACROS,
+    MEAL_TEMPLATES,
+    MacroTarget,
+    MealTemplate,
+    build_meal_plan,
+)
 
 TARGET = MacroTarget(calories=2000, protein_g=160, carbs_g=200, fat_g=60)
 
@@ -14,41 +20,49 @@ def test_four_slots_in_order():
     assert [s.label for s in plan] == ["Desayuno", "Comida", "Cena", "Snack"]
 
 
-def test_calorie_split_sums_to_target():
+def test_every_slot_gets_a_coherent_meal_even_without_prefs():
+    # With no preferences we fall back to slot templates (never an empty plate).
     plan = build_meal_plan(TARGET, [])
-    total = sum(s.calories for s in plan)
-    assert abs(total - TARGET.calories) <= 4  # rounding tolerance
+    assert all(s.foods for s in plan)
+    assert all(s.calories > 0 for s in plan)
 
 
-def test_breakfast_macro_share():
-    breakfast = build_meal_plan(TARGET, [])[0]
-    assert breakfast.calories == 500   # 25%
-    assert breakfast.protein_g == 40
-    assert breakfast.carbs_g == 50
-    assert breakfast.fat_g == 15
+def test_plan_meals_come_from_real_templates():
+    template_food_labels = set()
+    for tpl in MEAL_TEMPLATES:
+        for slug, _ in tpl.ingredients:
+            from gymapp.services.nutrition import food_label
 
-
-def test_no_preferences_means_empty_food_lists():
+            template_food_labels.add(food_label(slug))
     plan = build_meal_plan(TARGET, [])
-    assert all(s.foods == [] for s in plan)
+    for slot in plan:
+        for food in slot.foods:
+            assert food in template_food_labels
 
 
-def test_foods_drawn_from_preferences_and_rotate():
-    prefs = ["chicken", "beef", "rice", "oats", "broccoli", "avocado"]
+def test_all_template_ingredients_have_macros():
+    # every template ingredient must exist in FOOD_MACROS (no orphan slugs)
+    for tpl in MEAL_TEMPLATES:
+        for slug, _ in tpl.ingredients:
+            assert slug in FOOD_MACROS, f"{slug} missing from FOOD_MACROS"
+
+
+def test_templates_are_well_formed():
+    for tpl in MEAL_TEMPLATES:
+        assert isinstance(tpl, MealTemplate)
+        assert tpl.slots  # fits at least one slot
+        roles = {role for _, role in tpl.ingredients}
+        assert roles <= {"protein", "carb", "fat", "veg"}
+        # a real meal has a protein anchor
+        assert any(role == "protein" for _, role in tpl.ingredients)
+
+
+def test_preferences_select_a_matching_template():
+    # liking exactly the "Pollo, arroz y brócoli" mains makes lunch use it
+    prefs = ["chicken", "rice"]  # broccoli is veg → not required
     plan = {s.key: s for s in build_meal_plan(TARGET, prefs)}
-    # breakfast = protein/carb/fat → chicken, rice, avocado
-    assert plan["breakfast"].foods == ["Pollo", "Arroz", "Aguacate"]
-    # lunch = protein/carb/vegetable, rotated by slot index → beef, oats, broccoli
-    assert plan["lunch"].foods == ["Res", "Avena", "Brócoli"]
-    # rotation actually differs between slots
-    assert plan["breakfast"].foods != plan["lunch"].foods
-
-
-def test_slot_skips_categories_without_liked_items():
-    # only a protein liked → snack (protein, carb) lists just the protein
-    plan = {s.key: s for s in build_meal_plan(TARGET, ["chicken"])}
-    assert plan["snack"].foods == ["Pollo"]
-    assert plan["lunch"].foods == ["Pollo"]  # carb + vegetable skipped
+    assert "Pollo" in plan["lunch"].foods
+    assert "Arroz" in plan["lunch"].foods
 
 
 @pytest.mark.django_db

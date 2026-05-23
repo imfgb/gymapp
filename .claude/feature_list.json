@@ -137,9 +137,9 @@
     {
       "id": "nutrition-meals-plus",
       "phase": 3,
-      "title": "Nutrition: bigger catalog + generate/save/eat meals with grams",
+      "title": "Nutrition: coherent meal templates + grams + generate/save/eat",
       "status": "done",
-      "summary": "Curated FOOD_CATALOG (whey concentrate/isolate, casein, salmon, lean/ground beef, etc.; trimmed per user). FOOD_MACROS table (per 100 g raw). services.nutrition.generate_meal sizes each food in RAW GRAMS so its macro hits the slot share, then sums real macros → GeneratedMeal(items[MealItem slug/grams/p/c/f/kcal], totals). nutrition.SavedMeal stores the items (with grams) + totals + eaten_at. Views: generate (nutrition:generate_meal), toggle eaten w/ timestamp (nutrition:meal_done), delete (nutrition:meal_delete). Nutrition page shows per-food grams + macro breakdown ('Mis comidas') + a 'Generar comida' control."
+      "summary": "Curated FOOD_CATALOG (trimmed per user) + FOOD_MACROS (per 100 g raw). Meals are built from MEAL_TEMPLATES — fixed COHERENT food combos (e.g. avena+whey+plátano+crema; pollo+arroz+brócoli) tagged by slot + per-ingredient role — so generation never pairs steak with peanut butter. eligible_templates filters by the user's prefs (veg not required), _scale_template sizes each ingredient in RAW GRAMS to the slot's macro share and sums real macros. build_meal_plan = deterministic pick per slot; generate_meal = random eligible pick (variety). nutrition.SavedMeal stores items-with-grams + totals + eaten_at; views generate/meal_done(toggle w/ timestamp)/meal_delete; page shows per-food grams + macro breakdown + 'Generar comida'."
     },
     {
       "id": "phase5-block-programming",

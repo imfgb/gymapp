@@ -239,63 +239,6 @@ MEAL_SLOTS: list[tuple[str, str, float]] = [
     ("snack", "Snack", 0.10),
 ]
 
-# Which food categories each slot suggests, drawn from the user's preferences.
-SLOT_COMPONENTS: dict[str, tuple[str, ...]] = {
-    "breakfast": ("protein", "carb", "fat"),
-    "lunch": ("protein", "carb", "vegetable"),
-    "dinner": ("protein", "vegetable", "fat"),
-    "snack": ("protein", "carb"),
-}
-
-
-@dataclass(frozen=True)
-class MealSlot:
-    key: str
-    label: str
-    calories: int
-    protein_g: int
-    carbs_g: int
-    fat_g: int
-    foods: list[str]
-
-
-def _preferences_by_category(preferences) -> dict[str, list[str]]:
-    chosen = set(preferences or [])
-    return {
-        cat: [slug for slug, _ in items if slug in chosen]
-        for cat, items in FOOD_CATALOG.items()
-    }
-
-
-def build_meal_plan(target: MacroTarget, preferences=None) -> list[MealSlot]:
-    """Split a daily `MacroTarget` into four slots and suggest foods per slot.
-
-    Foods are rotated through the user's liked items per category (by slot
-    index) so slots differ; a category with no liked items contributes nothing.
-    Deterministic stub — no AI (CLAUDE.md §15).
-    """
-    by_cat = _preferences_by_category(preferences)
-    slots: list[MealSlot] = []
-    for idx, (key, label, pct) in enumerate(MEAL_SLOTS):
-        foods: list[str] = []
-        for cat in SLOT_COMPONENTS[key]:
-            liked = by_cat.get(cat) or []
-            if liked:
-                foods.append(food_label(liked[idx % len(liked)]))
-        slots.append(
-            MealSlot(
-                key=key,
-                label=label,
-                calories=round(target.calories * pct),
-                protein_g=round(target.protein_g * pct),
-                carbs_g=round(target.carbs_g * pct),
-                fat_g=round(target.fat_g * pct),
-                foods=foods,
-            )
-        )
-    return slots
-
-
 _SLOT_FRACTION = {key: pct for key, _, pct in MEAL_SLOTS}
 _SLOT_LABEL = {key: label for key, label, _ in MEAL_SLOTS}
 
@@ -327,6 +270,100 @@ class GeneratedMeal:
     fat_g: int
 
 
+@dataclass(frozen=True)
+class MealSlot:
+    key: str
+    label: str
+    calories: int
+    protein_g: int
+    carbs_g: int
+    fat_g: int
+    foods: list[str]
+
+
+@dataclass(frozen=True)
+class MealTemplate:
+    """A coherent, fixed combination of foods that actually go together.
+
+    `slots` are the meal slots it fits; each ingredient is `(slug, role)` where
+    role is protein/carb/fat (sized to hit that macro) or veg (fixed serving).
+    Generation only builds from these, so it never pairs e.g. steak with peanut
+    butter.
+    """
+
+    name: str
+    slots: tuple[str, ...]
+    ingredients: tuple[tuple[str, str], ...]
+
+
+_AM = ("breakfast", "snack")
+_PM = ("lunch", "dinner")
+
+MEAL_TEMPLATES: list[MealTemplate] = [
+    # breakfast / snack — shakes, oats, yogurt
+    MealTemplate("Avena con whey y plátano", _AM,
+                 (("oats", "carb"), ("whey_isolate", "protein"), ("banana", "carb"),
+                  ("peanut_butter", "fat"))),
+    MealTemplate("Batido de whey, avena y crema de almendra", _AM,
+                 (("whey_concentrate", "protein"), ("oats", "carb"), ("almond_butter", "fat"))),
+    MealTemplate("Yogur griego con granola y crema de cacahuate", _AM,
+                 (("greek_yogurt", "protein"), ("granola", "carb"), ("peanut_butter", "fat"))),
+    MealTemplate("Yogur griego con plátano y almendras", _AM,
+                 (("greek_yogurt", "protein"), ("banana", "carb"), ("almonds", "fat"))),
+    MealTemplate("Caseína con plátano y crema de cacahuate", ("snack",),
+                 (("casein", "protein"), ("banana", "carb"), ("peanut_butter", "fat"))),
+    MealTemplate("Huevos con pan integral y aguacate", ("breakfast",),
+                 (("eggs", "protein"), ("whole_wheat_bread", "carb"), ("avocado", "fat"))),
+    MealTemplate("Claras con avena y plátano", ("breakfast",),
+                 (("egg_whites", "protein"), ("oats", "carb"), ("banana", "carb"))),
+    # lunch / dinner — savory plates
+    MealTemplate("Pollo, arroz y brócoli", _PM,
+                 (("chicken", "protein"), ("rice", "carb"), ("broccoli", "veg"))),
+    MealTemplate("Bistec, papa y espárragos", _PM,
+                 (("lean_beef", "protein"), ("potato", "carb"), ("asparagus", "veg"))),
+    MealTemplate("Salmón, arroz integral y espinaca", _PM,
+                 (("salmon", "protein"), ("brown_rice", "carb"), ("spinach", "veg"))),
+    MealTemplate("Atún con pasta y jitomate", _PM,
+                 (("tuna", "protein"), ("pasta", "carb"), ("tomato", "veg"))),
+    MealTemplate("Pavo, camote y ejotes", _PM,
+                 (("turkey", "protein"), ("sweet_potato", "carb"), ("green_beans", "veg"))),
+    MealTemplate("Pollo, tortillas y pimiento", _PM,
+                 (("chicken", "protein"), ("tortilla", "carb"), ("pepper", "veg"))),
+    MealTemplate("Carne molida, arroz y calabacita", _PM,
+                 (("ground_beef", "protein"), ("rice", "carb"), ("zucchini", "veg"))),
+    MealTemplate("Tofu salteado con arroz y champiñón", _PM,
+                 (("tofu", "protein"), ("rice", "carb"), ("mushroom", "veg"))),
+    MealTemplate("Camarón con quinoa y espárragos", _PM,
+                 (("shrimp", "protein"), ("quinoa", "carb"), ("asparagus", "veg"))),
+    MealTemplate("Cerdo, arroz y zanahoria", _PM,
+                 (("pork", "protein"), ("rice", "carb"), ("carrot", "veg"))),
+]
+
+
+def eligible_templates(slot_key: str, preferences) -> list[MealTemplate]:
+    """Templates that fit the slot and whose protein/carb/fat foods the user likes.
+
+    Vegetables aren't required (they're swappable filler). Returns [] when the
+    user's preferences don't fully cover any template for the slot.
+    """
+    prefs = set(preferences or [])
+    out = []
+    for tpl in MEAL_TEMPLATES:
+        if slot_key not in tpl.slots:
+            continue
+        mains = [slug for slug, role in tpl.ingredients if role in _CATEGORY_MACRO_INDEX]
+        if all(slug in prefs for slug in mains):
+            out.append(tpl)
+    return out
+
+
+def _templates_for(slot_key: str, preferences) -> list[MealTemplate]:
+    """Preferred templates, falling back to all slot templates if none match."""
+    return eligible_templates(slot_key, preferences) or [
+        t for t in MEAL_TEMPLATES if slot_key in t.slots
+    ]
+
+
 def _item_from_grams(slug: str, grams: float) -> MealItem:
     p100, c100, f100 = FOOD_MACROS.get(slug, (0, 0, 0))
     g = max(5, min(500, int(round(grams / 5) * 5)))  # snap to 5 g, clamp
@@ -341,34 +378,34 @@ def _item_from_grams(slug: str, grams: float) -> MealItem:
     )
 
 
-def generate_meal(
-    slot_key: str, target: MacroTarget, preferences, rng: random.Random | None = None
-) -> GeneratedMeal:
-    """Build one concrete meal for a slot from the user's liked foods.
+def _scale_template(tpl: MealTemplate, slot_key: str, target: MacroTarget) -> GeneratedMeal:
+    """Size a template's ingredients (raw grams) to the slot's macro share.
 
-    Picks a food per slot category (randomly, so "generar otra" varies), sizes
-    each in **raw grams** so its namesake macro hits this slot's share of the
-    daily target (protein source → protein, carb → carbs, fat → fat; vegetables
-    get a fixed serving). The meal's macros are then summed from those grams, so
-    grams and macros are always consistent and self-explanatory.
+    Each protein/carb/fat ingredient is sized so its macro hits the slot target;
+    when a template has two of a role (e.g. oats + banana) the target is split
+    between them. Vegetables get a fixed serving. Macros are summed from the real
+    grams so the numbers explain themselves.
     """
-    chooser = rng or random
-    by_cat = _preferences_by_category(preferences)
     pct = _SLOT_FRACTION.get(slot_key, 0.25)
-    macro_target = (target.protein_g * pct, target.carbs_g * pct, target.fat_g * pct)
+    macro_target = {
+        "protein": target.protein_g * pct,
+        "carb": target.carbs_g * pct,
+        "fat": target.fat_g * pct,
+    }
+    counts: dict[str, int] = {}
+    for _, role in tpl.ingredients:
+        if role in macro_target:
+            counts[role] = counts.get(role, 0) + 1
 
     items: list[MealItem] = []
-    for cat in SLOT_COMPONENTS.get(slot_key, ()):
-        liked = by_cat.get(cat) or []
-        if not liked:
-            continue
-        slug = chooser.choice(liked)
-        if cat == "vegetable":
+    for slug, role in tpl.ingredients:
+        if role == "veg":
             items.append(_item_from_grams(slug, _VEGETABLE_GRAMS))
             continue
-        idx = _CATEGORY_MACRO_INDEX[cat]
+        idx = _CATEGORY_MACRO_INDEX[role]
+        share = macro_target[role] / counts[role]
         density = FOOD_MACROS.get(slug, (0, 0, 0))[idx] / 100
-        grams = macro_target[idx] / density if density else 100
+        grams = share / density if density else 60
         items.append(_item_from_grams(slug, grams))
 
     return GeneratedMeal(
@@ -378,6 +415,51 @@ def generate_meal(
         carbs_g=sum(i.carbs_g for i in items),
         fat_g=sum(i.fat_g for i in items),
     )
+
+
+def build_meal_plan(target: MacroTarget, preferences=None) -> list[MealSlot]:
+    """At-a-glance daily plan: one coherent meal per slot (deterministic pick)."""
+    slots: list[MealSlot] = []
+    for idx, (key, label, pct) in enumerate(MEAL_SLOTS):
+        templates = _templates_for(key, preferences)
+        if templates:
+            meal = _scale_template(templates[idx % len(templates)], key, target)
+            slots.append(
+                MealSlot(
+                    key=key,
+                    label=label,
+                    calories=meal.calories,
+                    protein_g=meal.protein_g,
+                    carbs_g=meal.carbs_g,
+                    fat_g=meal.fat_g,
+                    foods=[food_label(i.slug) for i in meal.items],
+                )
+            )
+        else:
+            slots.append(
+                MealSlot(
+                    key, label, round(target.calories * pct), round(target.protein_g * pct),
+                    round(target.carbs_g * pct), round(target.fat_g * pct), [],
+                )
+            )
+    return slots
+
+
+def generate_meal(
+    slot_key: str, target: MacroTarget, preferences, rng: random.Random | None = None
+) -> GeneratedMeal:
+    """Build one coherent meal for a slot from a curated template, in raw grams.
+
+    Randomly (for variety) picks a meal template that fits the slot and matches
+    the user's preferences, then scales it to the slot's macro share. Because
+    templates are fixed sensible combinations, generated meals always make
+    culinary sense.
+    """
+    chooser = rng or random
+    templates = _templates_for(slot_key, preferences)
+    if not templates:
+        return GeneratedMeal(items=[], calories=0, protein_g=0, carbs_g=0, fat_g=0)
+    return _scale_template(chooser.choice(templates), slot_key, target)
 
 
 @dataclass(frozen=True)

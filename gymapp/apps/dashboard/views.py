@@ -12,6 +12,7 @@ from gymapp.apps.metrics.models import UserMetricSnapshot
 from gymapp.apps.prs.models import PersonalRecord
 from gymapp.apps.routines.models import Routine, SkippedDay, Weekday, WeeklySplit
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
+from gymapp.services.analytics import sets_by_muscle, weekly_volume
 from gymapp.services.goals import current_goal, monthly_goal_progress
 
 
@@ -131,5 +132,44 @@ def home(request):
             "startable_routines": startable_routines,
             "done_today": done_today,
             "goal_progress": goal_progress,
+        },
+    )
+
+
+@login_required
+def progress(request):
+    """Training analytics: weekly tonnage trend + this week's sets per muscle."""
+    weekly = weekly_volume(request.user, weeks=8)
+    max_vol = max((p.volume_kg for p in weekly), default=0) or 1
+    weekly_rows = [
+        {
+            "week_start": p.week_start,
+            "volume_kg": p.volume_kg,
+            "sets": p.sets,
+            "pct": int(round(p.volume_kg / max_vol * 100)),
+        }
+        for p in weekly
+    ]
+
+    muscles = sets_by_muscle(request.user)
+    max_sets = max((m.sets for m in muscles), default=0) or 1
+    muscle_rows = [
+        {
+            "muscle": m.muscle,
+            "sets": m.sets,
+            "volume_kg": m.volume_kg,
+            "pct": int(round(m.sets / max_sets * 100)),
+        }
+        for m in muscles
+    ]
+
+    return render(
+        request,
+        "dashboard/progress.html",
+        {
+            "weekly_rows": weekly_rows,
+            "muscle_rows": muscle_rows,
+            "this_week_volume": weekly_rows[-1]["volume_kg"] if weekly_rows else 0,
+            "this_week_sets": sum(m["sets"] for m in muscle_rows),
         },
     )

@@ -142,7 +142,7 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `substitution` | Delegates to `exercise_library`. | Multi-factor scoring (Phase 2). |
 | `coaching` | Facade re-exporting `progression` + `substitution`. | Orchestrates programming sessions / 6-week blocks. |
 | `nutrition` | `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE → goal-adjusted calories → macro split. `daily_target_for_user`. | AI meal rec (Phase 4). |
-| `analytics` | Stub Protocol. | Volume/intensity rollups (Phase 4). |
+| `analytics` | `weekly_volume` (per-week tonnage + set count) + `sets_by_muscle` (per-muscle hard sets this week). Powers `/progreso/`. | PR cadence, intensity heatmaps (Phase 5 cont.). |
 
 **The AI seam:** every service exposes a `Strategy` (Protocol) and a `Deterministic*` implementation. A future `LLMStrategy` (Claude API) can be selected via settings without touching call sites. Document the contract in `docs/service_layer.md`.
 
@@ -288,7 +288,15 @@ Detail → `ROADMAP.md`.
 - **food-preferences** (2026-05-23): `users.Profile.food_preferences` (`JSONField(default=list)`, migration `users.0003`) stores a flat list of liked-food slugs. The catalogue lives as a constant in `services/nutrition` — `FOOD_CATALOG` groups protein/carb/vegetable/fat with English slug + Spanish label (no DB table; a deterministic stub plan doesn't need one). Helpers: `grouped_catalog(selected)`, `clean_food_preferences(slugs)` (keeps only known slugs, deduped, in catalogue order), `food_label`, `all_food_slugs`. Editor at `nutrition:preferences` (grouped checkboxes); the nutrition page shows the selected count + an "Editar" link (rendered regardless of profile completeness).
 - **meal-slots** (2026-05-23): `services.nutrition.build_meal_plan(target, preferences)` → 4 `MealSlot`s. `MEAL_SLOTS` splits the daily target (breakfast 25% / lunch 35% / dinner 30% / snack 10%); `SLOT_COMPONENTS` says which food categories each slot suggests; foods are rotated through the user's liked items per category by slot index (so slots differ; an empty category contributes nothing). Rendered on `/nutrition/` below the macros. **Closes Phase 3.**
 
-**Phase 3 — Nutrition: complete (2026-05-23).** Exit criterion met: the Nutrition page shows today's calorie + macro target plus four meal slots respecting food preferences. Next: **Phase 4 — AI integration** (`LLMStrategy` behind the existing service Protocols, starting with nutrition's `recommend()`), per ROADMAP.md.
+**Phase 3 — Nutrition: complete (2026-05-23).** Exit criterion met: the Nutrition page shows today's calorie + macro target plus four meal slots respecting food preferences.
+
+**Phase 4 — AI integration: SKIPPED (user decision, 2026-05-23).** The user will not pay for anything, and Phase 4 as scoped needs a paid Claude API. We are not building it as a paid feature. The deterministic app is the finished product; the `recommend()` Protocol seam stays available if a free/local model is ever wired in. See memory `feedback-no-spend`.
+
+**Phase 5 — Polish: in progress (started 2026-05-23).** Features landed:
+
+- **analytics-volume** (2026-05-23): `services/analytics` is now real (was a stub). `weekly_volume(user, weeks=8)` → per-week tonnage (Σ weight×reps) + working-set count, Monday-anchored and zero-filled; `sets_by_muscle(user)` → this week's hard sets + volume per **primary** muscle group (full counting — a set counts for every primary muscle the exercise trains; warm-ups + incomplete sets excluded). New read-only view `dashboard:progress` (`/progreso/`) renders an 8-week tonnage trend + sets-per-muscle bars (no new app — lives in the model-less `dashboard` app); nav **"Progreso"** link. Pure functions, no AI (like `services.goals`).
+
+Phase 5 features still queued: **deload-suggestions** (tonnage-trend + missed-rep detection → recommendation card), **block-programming** (6-week block templates per training style). These close the Phase 5 exit criterion (clear plan + deload rec + weekly volume trends).
 
 **Bug fixes applied (2026-05-21):**
 
@@ -298,7 +306,7 @@ Detail → `ROADMAP.md`.
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 186 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 195 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), analytics (weekly volume + sets-per-muscle service + Progreso page), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

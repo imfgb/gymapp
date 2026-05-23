@@ -78,6 +78,6 @@ def test_meal_plan_shown_on_nutrition_home(client):
     client.force_login(user)
     resp = client.get(reverse("nutrition:home"))
     assert resp.status_code == 200
-    assert b"Tu plan de comidas" in resp.content
+    assert b"Plan sugerido del d" in resp.content  # "Plan sugerido del día"
     assert b"Desayuno" in resp.content
     assert b"Pollo" in resp.content

@@ -15,6 +15,7 @@ views. No AI in MVP (CLAUDE.md §15).
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
@@ -51,35 +52,61 @@ FAT_G_PER_KG = 0.8
 # list of these slugs (no DB catalogue needed for a deterministic stub plan).
 FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
     "protein": [
+        # whole-food animal
         ("chicken", "Pollo"),
         ("beef", "Res"),
+        ("lean_beef", "Bistec magro"),
+        ("ground_beef", "Carne molida magra"),
         ("eggs", "Huevo"),
+        ("egg_whites", "Claras de huevo"),
         ("fish", "Pescado"),
+        ("salmon", "Salmón"),
         ("tuna", "Atún"),
+        ("sardines", "Sardinas"),
         ("pork", "Cerdo"),
         ("turkey", "Pavo"),
+        ("turkey_ham", "Jamón de pavo"),
         ("shrimp", "Camarón"),
-        ("tofu", "Tofu"),
         ("greek_yogurt", "Yogur griego"),
-        ("whey", "Proteína whey"),
         ("cottage_cheese", "Requesón"),
+        # supplements
+        ("whey", "Proteína whey"),
+        ("whey_concentrate", "Whey concentrada"),
+        ("whey_isolate", "Whey aislada"),
+        ("casein", "Caseína"),
+        # plant-based
+        ("tofu", "Tofu"),
+        ("tempeh", "Tempeh"),
+        ("seitan", "Seitán"),
+        ("edamame", "Edamame"),
+        ("soy_protein", "Proteína de soya"),
+        ("pea_protein", "Proteína de chícharo"),
     ],
     "carb": [
         ("rice", "Arroz"),
+        ("brown_rice", "Arroz integral"),
         ("oats", "Avena"),
         ("potato", "Papa"),
         ("sweet_potato", "Camote"),
         ("pasta", "Pasta"),
         ("bread", "Pan"),
+        ("whole_wheat_bread", "Pan integral"),
         ("tortilla", "Tortilla"),
+        ("corn", "Elote"),
         ("beans", "Frijoles"),
         ("lentils", "Lentejas"),
+        ("chickpeas", "Garbanzos"),
         ("quinoa", "Quinoa"),
         ("fruit", "Fruta"),
+        ("banana", "Plátano"),
+        ("rice_cakes", "Tortitas de arroz"),
+        ("granola", "Granola"),
+        ("honey", "Miel"),
     ],
     "vegetable": [
         ("broccoli", "Brócoli"),
         ("spinach", "Espinaca"),
+        ("kale", "Kale"),
         ("lettuce", "Lechuga"),
         ("tomato", "Jitomate"),
         ("carrot", "Zanahoria"),
@@ -88,15 +115,24 @@ FOOD_CATALOG: dict[str, list[tuple[str, str]]] = {
         ("cucumber", "Pepino"),
         ("onion", "Cebolla"),
         ("mushroom", "Champiñón"),
+        ("green_beans", "Ejotes"),
+        ("asparagus", "Espárragos"),
         ("nopal", "Nopal"),
     ],
     "fat": [
         ("avocado", "Aguacate"),
         ("olive_oil", "Aceite de oliva"),
+        ("coconut_oil", "Aceite de coco"),
         ("nuts", "Nueces"),
-        ("peanut_butter", "Crema de cacahuate"),
+        ("walnuts", "Nueces de Castilla"),
         ("almonds", "Almendras"),
+        ("peanut_butter", "Crema de cacahuate"),
+        ("almond_butter", "Crema de almendra"),
+        ("chia", "Chía"),
+        ("flax", "Linaza"),
         ("cheese", "Queso"),
+        ("dark_chocolate", "Chocolate amargo"),
+        ("egg_yolk", "Yema de huevo"),
     ],
 }
 
@@ -205,6 +241,40 @@ def build_meal_plan(target: MacroTarget, preferences=None) -> list[MealSlot]:
             )
         )
     return slots
+
+
+_SLOT_FRACTION = {key: pct for key, _, pct in MEAL_SLOTS}
+_SLOT_LABEL = {key: label for key, label, _ in MEAL_SLOTS}
+
+
+def slot_label(slot_key: str) -> str:
+    return _SLOT_LABEL.get(slot_key, slot_key)
+
+
+def generate_meal(
+    slot_key: str, target: MacroTarget, preferences, rng: random.Random | None = None
+) -> tuple[list[str], MacroTarget]:
+    """Pick one concrete meal for a slot from the user's liked foods.
+
+    Unlike `build_meal_plan` (which rotates deterministically for the at-a-glance
+    plan), this samples randomly within each category so pressing "generar otra"
+    yields variety. Returns (food_slugs, macro_split_for_this_slot).
+    """
+    chooser = rng or random
+    by_cat = _preferences_by_category(preferences)
+    pct = _SLOT_FRACTION.get(slot_key, 0.25)
+    foods: list[str] = []
+    for cat in SLOT_COMPONENTS.get(slot_key, ()):
+        liked = by_cat.get(cat) or []
+        if liked:
+            foods.append(chooser.choice(liked))
+    macros = MacroTarget(
+        calories=round(target.calories * pct),
+        protein_g=round(target.protein_g * pct),
+        carbs_g=round(target.carbs_g * pct),
+        fat_g=round(target.fat_g * pct),
+    )
+    return foods, macros
 
 
 @dataclass(frozen=True)

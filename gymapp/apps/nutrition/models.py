@@ -22,7 +22,8 @@ class SavedMeal(OwnedMixin, TimestampedModel):
         SNACK = "snack", "Snack"
 
     slot = models.CharField(max_length=12, choices=Slot.choices)
-    foods = models.JSONField(default=list)  # food slugs from services.nutrition.FOOD_CATALOG
+    # List of {slug, grams, protein_g, carbs_g, fat_g, calories} (raw grams).
+    foods = models.JSONField(default=list)
     calories = models.PositiveIntegerField(default=0)
     protein_g = models.PositiveIntegerField(default=0)
     carbs_g = models.PositiveIntegerField(default=0)
@@ -38,7 +39,14 @@ class SavedMeal(OwnedMixin, TimestampedModel):
         return f"{self.get_slot_display()} ({self.owner.email})"
 
     @property
-    def food_labels(self) -> list[str]:
+    def items(self) -> list[dict]:
+        """Foods with their Spanish label attached, for templates."""
         from gymapp.services.nutrition import food_label
 
-        return [food_label(s) for s in self.foods]
+        out = []
+        for it in self.foods:
+            if isinstance(it, str):  # legacy rows stored bare slugs
+                out.append({"slug": it, "label": food_label(it), "grams": None})
+            else:
+                out.append({**it, "label": food_label(it.get("slug", ""))})
+        return out

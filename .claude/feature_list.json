@@ -137,9 +137,9 @@
     {
       "id": "nutrition-meals-plus",
       "phase": 3,
-      "title": "Nutrition: bigger catalog + generate/save/eat meals",
+      "title": "Nutrition: bigger catalog + generate/save/eat meals with grams",
       "status": "done",
-      "summary": "Expanded FOOD_CATALOG (whey concentrate/isolate, casein, salmon, seitan, edamame, soy/pea protein, brown rice, banana, chia, etc.). services.nutrition.generate_meal samples a varied meal from preferences for a slot. nutrition.SavedMeal model (slot, foods, macro snapshot, eaten_at) + views: generate (nutrition:generate_meal), toggle eaten with timestamp (nutrition:meal_done), delete (nutrition:meal_delete). 'Mis comidas' list + 'Generar comida' control on the nutrition page."
+      "summary": "Curated FOOD_CATALOG (whey concentrate/isolate, casein, salmon, lean/ground beef, etc.; trimmed per user). FOOD_MACROS table (per 100 g raw). services.nutrition.generate_meal sizes each food in RAW GRAMS so its macro hits the slot share, then sums real macros → GeneratedMeal(items[MealItem slug/grams/p/c/f/kcal], totals). nutrition.SavedMeal stores the items (with grams) + totals + eaten_at. Views: generate (nutrition:generate_meal), toggle eaten w/ timestamp (nutrition:meal_done), delete (nutrition:meal_delete). Nutrition page shows per-food grams + macro breakdown ('Mis comidas') + a 'Generar comida' control."
     },
     {
       "id": "phase5-block-programming",

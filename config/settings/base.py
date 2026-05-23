@@ -49,6 +49,7 @@ LOCAL_APPS = [
     "gymapp.apps.workouts",
     "gymapp.apps.prs",
     "gymapp.apps.metrics",
+    "gymapp.apps.nutrition",
     "gymapp.apps.dashboard",
 ]
 

@@ -76,6 +76,8 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
         except ValueError:
             return HttpResponseBadRequest("invalid height_cm")
         profile.date_of_birth = dob or None
+        profile.sex = request.POST.get("sex") or ""
+        profile.activity_level = request.POST.get("activity_level", profile.activity_level)
         profile.training_style = request.POST.get("training_style", profile.training_style)
         profile.training_goal = request.POST.get("training_goal", profile.training_goal)
         try:
@@ -86,7 +88,7 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
             return HttpResponseBadRequest("invalid default_rest_seconds")
         profile.save()
         return redirect("metrics:profile")
-    from gymapp.apps.users.models import TrainingGoal, TrainingStyle
+    from gymapp.apps.users.models import ActivityLevel, Sex, TrainingGoal, TrainingStyle
 
     return render(
         request,
@@ -95,6 +97,8 @@ def profile_edit(request: HttpRequest) -> HttpResponse:
             "profile": profile,
             "training_styles": TrainingStyle.choices,
             "training_goals": TrainingGoal.choices,
+            "sexes": Sex.choices,
+            "activity_levels": ActivityLevel.choices,
         },
     )
 

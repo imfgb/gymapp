@@ -83,6 +83,17 @@
   {% endif %}
 </section>
 
+{# ============ DELOAD ALERT ============ #}
+{% if deload.recommended %}
+<section class="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4">
+  <p class="font-medium text-amber-900">🟠 Considera una semana de descarga</p>
+  <p class="mt-1 text-sm text-amber-800">
+    Llevas {{ deload.weeks_accumulated }} semanas acumulando volumen. Bajar la carga una semana te ayudará a recuperar.
+    <a href="{% url 'dashboard:progress' %}" class="underline">Ver progreso</a>
+  </p>
+</section>
+{% endif %}
+
 {# ============ THIS WEEK ============ #}
 <section class="mb-8">
   <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Esta semana</h2>

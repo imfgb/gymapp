@@ -9,7 +9,11 @@ import pytest
 from django.utils import timezone
 
 from gymapp.apps.workouts.models import ExerciseLog, SetLog, WorkoutSession, WorkoutStatus
-from gymapp.services.analytics import sets_by_muscle, weekly_volume
+from gymapp.services.analytics import (
+    deload_recommendation,
+    sets_by_muscle,
+    weekly_volume,
+)
 from tests.factories import EquipmentFactory, ExerciseFactory, MuscleGroupFactory, UserFactory
 
 
@@ -152,3 +156,66 @@ def test_sets_by_muscle_only_current_week(alice, bench):
     today = timezone.localdate()
     _session(alice, today - timedelta(days=8), [(bench, Decimal("100"), 5, False, True)])
     assert sets_by_muscle(alice, today=today) == []
+
+
+# ---------------------------------------------------------------------------
+# deload_recommendation
+# ---------------------------------------------------------------------------
+
+
+def _hard_week(alice, bench, weeks_ago, today, *, sets=5):
+    """One session in the completed week `weeks_ago` weeks before today."""
+    day = today - timedelta(days=7 * weeks_ago)
+    _session(alice, day, [(bench, Decimal("100"), 5, False, True) for _ in range(sets)])
+
+
+@pytest.mark.django_db
+def test_deload_not_recommended_without_training(alice):
+    advice = deload_recommendation(alice, today=timezone.localdate())
+    assert advice.recommended is False
+    assert advice.reason == "no_recent_training"
+
+
+@pytest.mark.django_db
+def test_deload_recommended_after_threshold_hard_weeks(alice, bench):
+    today = timezone.localdate()
+    for w in range(1, 6):  # 5 completed hard weeks (1..5 weeks ago)
+        _hard_week(alice, bench, w, today)
+    advice = deload_recommendation(alice, today=today, threshold=5)
+    assert advice.recommended is True
+    assert advice.weeks_accumulated == 5
+    assert advice.reason == "accumulated_fatigue"
+
+
+@pytest.mark.django_db
+def test_deload_not_recommended_below_threshold(alice, bench):
+    today = timezone.localdate()
+    for w in range(1, 4):  # only 3 hard weeks
+        _hard_week(alice, bench, w, today)
+    advice = deload_recommendation(alice, today=today, threshold=5)
+    assert advice.recommended is False
+    assert advice.weeks_accumulated == 3
+    assert advice.reason == "accumulating"
+
+
+@pytest.mark.django_db
+def test_recent_light_week_resets_accumulation(alice, bench):
+    today = timezone.localdate()
+    for w in range(2, 7):  # hard weeks 2..6 ago
+        _hard_week(alice, bench, w, today)
+    _hard_week(alice, bench, 1, today, sets=1)  # last completed week is light
+    advice = deload_recommendation(alice, today=today, threshold=5)
+    assert advice.recommended is False
+    assert advice.weeks_accumulated == 0
+
+
+@pytest.mark.django_db
+def test_deload_ignores_current_partial_week(alice, bench):
+    today = timezone.localdate()
+    # 5 hard completed weeks → recommend; a session this week shouldn't change it
+    for w in range(1, 6):
+        _hard_week(alice, bench, w, today)
+    _session(alice, today, [(bench, Decimal("100"), 5, False, True)])
+    advice = deload_recommendation(alice, today=today, threshold=5)
+    assert advice.recommended is True
+    assert advice.weeks_accumulated == 5

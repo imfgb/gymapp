@@ -131,8 +131,8 @@
       "id": "phase5-deload-suggestions",
       "phase": 5,
       "title": "Deload suggestions",
-      "status": "queued",
-      "summary": "Auto-detect deload need from tonnage trend + missed-rep frequency; surface a recommendation card on the dashboard/progress page."
+      "status": "done",
+      "summary": "services.analytics.deload_recommendation(user): counts the trailing run of consecutive completed training weeks (ignores the partial current week), stopping at any week whose tonnage <= 60% of the run median (already a deload). Recommends a deload at ACCUMULATION_WEEKS (5). Amber card on /progreso/ (always shows accumulating count) + a conditional alert on the dashboard home when recommended."
     },
     {
       "id": "phase5-block-programming",

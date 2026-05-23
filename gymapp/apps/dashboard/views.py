@@ -10,13 +10,20 @@ from django.utils import timezone
 
 from gymapp.apps.metrics.models import UserMetricSnapshot
 from gymapp.apps.prs.models import PersonalRecord
-from gymapp.apps.routines.models import Routine, SkippedDay, Weekday, WeeklySplit
+from gymapp.apps.routines.models import (
+    Routine,
+    SkippedDay,
+    TrainingBlock,
+    Weekday,
+    WeeklySplit,
+)
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
 from gymapp.services.analytics import (
     deload_recommendation,
     sets_by_muscle,
     weekly_volume,
 )
+from gymapp.services.coaching.blocks import block_status
 from gymapp.services.goals import current_goal, monthly_goal_progress
 
 
@@ -124,11 +131,17 @@ def home(request):
 
     deload = deload_recommendation(request.user, today=today)
 
+    block = TrainingBlock.objects.for_user(request.user).order_by("-started_on").first()
+    block_state = (
+        block_status(block.training_style, block.started_on, today) if block else None
+    )
+
     return render(
         request,
         "dashboard/home.html",
         {
             "deload": deload,
+            "block_state": block_state,
             "today_routine_day": today_entry["routine_day"],
             "today_skipped": today_entry["is_skipped"],
             "in_progress": in_progress,

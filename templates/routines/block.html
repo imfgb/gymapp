@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Bloque · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Bloque de entrenamiento</h1>
+  <p class="text-sm text-slate-500">Periodización de 6 semanas</p>
+</header>
+
+{% if status and not status.is_finished %}
+  <section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+    <div class="mb-1 flex items-baseline justify-between">
+      <h2 class="text-sm uppercase tracking-wide text-slate-500">Semana actual</h2>
+      <span class="text-xs text-slate-400">{{ training_block.get_training_style_display }} · inició {{ training_block.started_on|date:"d/m" }}</span>
+    </div>
+    <p class="text-2xl font-bold">Semana {{ status.week_index }}/{{ status.weeks|length }} · {{ status.current.title }}</p>
+    <p class="mt-1 text-sm text-slate-600">{{ status.current.detail }}</p>
+  </section>
+{% elif status and status.is_finished %}
+  <section class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
+    <p class="font-medium text-emerald-800">✅ Terminaste tu bloque de {{ status.weeks|length }} semanas.</p>
+    <p class="mt-1 text-sm text-emerald-700">Inicia uno nuevo para seguir progresando.</p>
+  </section>
+{% else %}
+  <section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+    <p class="text-slate-700">No tienes un bloque activo. Inicia uno para seguir un plan de 6 semanas.</p>
+  </section>
+{% endif %}
+
+{% if status %}
+  {# Full plan, current week highlighted #}
+  <section class="mb-8">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Plan del bloque</h2>
+    <ol class="space-y-2">
+      {% for w in status.weeks %}
+        <li class="rounded-lg border p-4
+                   {% if not status.is_finished and w.week == status.week_index %}border-brand bg-brand/10{% elif w.is_deload %}border-slate-200 bg-slate-50{% else %}border-slate-200 bg-white{% endif %}">
+          <div class="flex items-baseline justify-between">
+            <span class="font-medium">Semana {{ w.week }} · {{ w.title }}</span>
+            {% if not status.is_finished and w.week == status.week_index %}
+              <span class="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-ink">Ahora</span>
+            {% elif w.is_deload %}
+              <span class="text-xs text-slate-400">descarga</span>
+            {% endif %}
+          </div>
+          <p class="mt-1 text-sm text-slate-600">{{ w.detail }}</p>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endif %}
+
+{# Start a new block #}
+<section class="rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">{% if status %}Iniciar otro bloque{% else %}Iniciar un bloque{% endif %}</h2>
+  <form method="post" class="flex flex-wrap items-end gap-2">
+    {% csrf_token %}
+    <label class="text-xs text-slate-500">
+      <span class="mb-1 block">Estilo</span>
+      <select name="training_style" class="block w-56 rounded-md border border-slate-300 px-3 py-2 text-sm">
+        {% for value, label in training_styles %}
+          <option value="{{ value }}" {% if value == default_style %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+      Iniciar bloque (hoy)
+    </button>
+  </form>
+</section>
+{% endblock %}

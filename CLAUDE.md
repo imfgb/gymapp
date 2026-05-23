@@ -122,7 +122,7 @@ gymapp/                              # repo root
 | `core` | Cross-cutting mixins: `TimestampedModel`, `OwnerScopedQuerySet`, `OwnedMixin`, `OwnerScopedAdmin`. | (no models) |
 | `users` | Custom User (email-as-username), Profile (training prefs, height, DOB, sex, activity level), one-shot password-change-on-first-login. | `User`, `Profile` |
 | `exercises` | Curated + custom exercise catalogue. Each tags primary/secondary muscle groups, equipment, category. Self-referencing alternatives M2M. | `MuscleGroup`, `Equipment`, `Exercise` (nullable `owner` → null = global), `ExerciseAlternative` |
-| `routines` | User-defined workout templates and weekly schedule. | `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit` |
+| `routines` | User-defined workout templates, weekly schedule, skip-days, and 6-week training blocks. | `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit`, `SkippedDay`, `TrainingBlock` |
 | `workouts` | Actual training sessions and set-by-set logs. Drives the interactive checklist. | `WorkoutSession`, `ExerciseLog`, `SetLog` |
 | `prs` | Personal records per exercise per rep-count. Auto-detected from finished `SetLog`s + manual overrides. | `PersonalRecord` |
 | `metrics` | Body composition snapshots + per-month goals. | `UserMetricSnapshot`, `MonthlyGoal` |
@@ -140,7 +140,7 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `exercise_library` | Loads `seeds/exercises.yaml` via data migration. `lookup_alternatives(slug, equipment)` over the curated graph. | AI-ranked (Phase 4). |
 | `progression` | `recommend_next` returns the last completed weight×reps. | Linear/double progression → RPE-driven → AI-tuned. |
 | `substitution` | Delegates to `exercise_library`. | Multi-factor scoring (Phase 2). |
-| `coaching` | Facade re-exporting `progression` + `substitution`. | Orchestrates programming sessions / 6-week blocks. |
+| `coaching` | Facade re-exporting `progression` + `substitution`; `blocks` submodule = deterministic 6-week block templates + `block_status`. | AI-orchestrated programming (Phase 4, skipped). |
 | `nutrition` | `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE → goal-adjusted calories → macro split. `daily_target_for_user`. | AI meal rec (Phase 4). |
 | `analytics` | `weekly_volume` + `sets_by_muscle` + `deload_recommendation`. Powers `/progreso/` + deload alerts. | PR cadence, intensity heatmaps (Phase 5 cont.). |
 
@@ -296,8 +296,9 @@ Detail → `ROADMAP.md`.
 
 - **analytics-volume** (2026-05-23): `services/analytics` is now real (was a stub). `weekly_volume(user, weeks=8)` → per-week tonnage (Σ weight×reps) + working-set count, Monday-anchored and zero-filled; `sets_by_muscle(user)` → this week's hard sets + volume per **primary** muscle group (full counting — a set counts for every primary muscle the exercise trains; warm-ups + incomplete sets excluded). New read-only view `dashboard:progress` (`/progreso/`) renders an 8-week tonnage trend + sets-per-muscle bars (no new app — lives in the model-less `dashboard` app); nav **"Progreso"** link. Pure functions, no AI (like `services.goals`).
 - **deload-suggestions** (2026-05-23): `services.analytics.deload_recommendation(user)` → `DeloadAdvice`. Counts the trailing run of consecutive completed training weeks (the current partial week is ignored), stopping at any week whose tonnage ≤ `LIGHT_WEEK_RATIO` (0.6) of the run **median** (already a deload — median, not peak, so one big week doesn't mask a steady block). Recommends a deload once the count reaches `ACCUMULATION_WEEKS` (5). Always-on status card on `/progreso/` ("llevas N de 5 semanas acumulando") + a conditional amber alert on the dashboard home when recommended.
+- **block-programming** (2026-05-23): `routines.TrainingBlock` (owner, `training_style`, `started_on`, `length_weeks`; migration `routines.0003`). `services/coaching/blocks.py` holds deterministic 6-week templates per style (`BLOCK_TEMPLATES`: bodybuilding / powerlifting / powerbuilding, week 6 = deload); `block_status(style, started_on, today)` derives the current week from the calendar (no jobs, like the rest of the MVP). View `routines:block` (`/routines/bloque/`) renders the full plan with the current week highlighted and starts a new block; dashboard **"Tu bloque"** card shows the current week's focus. **Closes Phase 5.** (Gotcha: a template context var named `block` collides with `{% block %}` — used `training_block`.)
 
-Phase 5 features still queued: **block-programming** (6-week block templates per training style). Closing it meets the Phase 5 exit criterion (clear plan + deload rec + weekly volume trends).
+**Phase 5 — Polish: complete (2026-05-23).** Exit criterion met: the dashboard surfaces the current block plan, a deload recommendation when warranted, and weekly volume trends (via `/progreso/`). **Phases 1, 2, 3, 5 are all done; Phase 4 (AI) intentionally skipped (no budget).** The deterministic app is feature-complete per the roadmap.
 
 **Bug fixes applied (2026-05-21):**
 
@@ -307,7 +308,7 @@ Phase 5 features still queued: **block-programming** (6-week block templates per
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 200 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), analytics (weekly volume + sets-per-muscle + deload recommendation + Progreso page), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 212 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder), analytics (weekly volume + sets-per-muscle + deload recommendation + Progreso page), block-programming (block templates service + block page/view), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `gym1234`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

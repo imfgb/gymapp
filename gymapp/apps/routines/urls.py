@@ -44,4 +44,6 @@ urlpatterns = [
     path("split/<int:weekday>/", views.weekly_split_assign, name="weekly_split_assign"),
     # "Hoy no iré al gym" toggle for today
     path("skip-today/", views.skip_today_toggle, name="skip_today"),
+    # 6-week training block
+    path("bloque/", views.block, name="block"),
 ]

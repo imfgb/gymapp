@@ -21,6 +21,7 @@ from django.db import models
 
 from gymapp.apps.core.models import OwnedMixin, OwnerScopedQuerySet, TimestampedModel
 from gymapp.apps.exercises.models import Exercise
+from gymapp.apps.users.models import TrainingStyle
 
 
 class Weekday(models.IntegerChoices):
@@ -133,6 +134,27 @@ class SkippedDay(OwnedMixin, TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.owner.email} skipped {self.date}"
+
+
+class TrainingBlock(OwnedMixin, TimestampedModel):
+    """A periodization block the user is currently running.
+
+    Holds only the anchor (`started_on`) + style + length; the per-week plan is
+    a deterministic template in `services.coaching` (no rows per week). The
+    "current week" is derived from `started_on` vs today, so a block needs no
+    cron/job to advance — it advances by the calendar.
+    """
+
+    name = models.CharField(max_length=120, blank=True)
+    training_style = models.CharField(max_length=20, choices=TrainingStyle.choices)
+    started_on = models.DateField(db_index=True)
+    length_weeks = models.PositiveSmallIntegerField(default=6)
+
+    class Meta:
+        ordering = ["-started_on"]
+
+    def __str__(self) -> str:
+        return f"{self.owner.email} block from {self.started_on} ({self.training_style})"
 
 
 class WeeklySplit(TimestampedModel):

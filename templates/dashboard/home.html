@@ -94,6 +94,22 @@
 </section>
 {% endif %}
 
+{# ============ TRAINING BLOCK ============ #}
+<section class="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+  <div class="flex items-center justify-between">
+    <h2 class="text-sm uppercase tracking-wide text-slate-500">Tu bloque</h2>
+    <a href="{% url 'routines:block' %}" class="text-xs text-slate-500 hover:underline">{% if block_state %}Ver plan →{% else %}Iniciar →{% endif %}</a>
+  </div>
+  {% if block_state and not block_state.is_finished %}
+    <p class="mt-2 text-lg font-medium">Semana {{ block_state.week_index }}/{{ block_state.weeks|length }} · {{ block_state.current.title }}</p>
+    <p class="mt-1 text-sm text-slate-600">{{ block_state.current.detail }}</p>
+  {% elif block_state and block_state.is_finished %}
+    <p class="mt-2 text-sm text-slate-700">Terminaste tu bloque. <a href="{% url 'routines:block' %}" class="underline">Inicia uno nuevo</a>.</p>
+  {% else %}
+    <p class="mt-2 text-sm text-slate-500">Sigue un plan de 6 semanas con descarga. <a href="{% url 'routines:block' %}" class="underline">Inicia un bloque</a>.</p>
+  {% endif %}
+</section>
+
 {# ============ THIS WEEK ============ #}
 <section class="mb-8">
   <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Esta semana</h2>

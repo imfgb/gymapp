@@ -138,8 +138,8 @@
       "id": "phase5-block-programming",
       "phase": 5,
       "title": "6-week block programming",
-      "status": "queued",
-      "summary": "Block templates per training style; dashboard shows the current block week + plan."
+      "status": "done",
+      "summary": "routines.TrainingBlock model (owner, training_style, started_on, length_weeks; migration routines.0003). services.coaching.blocks holds deterministic 6-week templates per style (bodybuilding/powerlifting/powerbuilding, week 6 = deload); block_status derives the current week from started_on vs today (no jobs). routines:block (/routines/bloque/) shows the full plan with the current week highlighted + starts a new block; dashboard 'Tu bloque' card shows the current week. Closes Phase 5."
     }
   ]
 }

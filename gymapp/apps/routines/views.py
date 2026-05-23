@@ -21,10 +21,12 @@ from gymapp.apps.routines.models import (
     RoutineDay,
     RoutineExercise,
     SkippedDay,
+    TrainingBlock,
     Weekday,
     WeeklySplit,
 )
 from gymapp.apps.users.models import TrainingStyle
+from gymapp.services.coaching.blocks import BLOCK_LENGTH_WEEKS, block_status
 from gymapp.services.routine_generator import (
     PRESET_LABELS,
     SplitPreset,
@@ -395,3 +397,36 @@ def skip_today_toggle(request: HttpRequest) -> HttpResponse:
     else:
         SkippedDay.objects.create(owner=request.user, date=today)
     return redirect("dashboard:home")
+
+
+@login_required
+def block(request: HttpRequest) -> HttpResponse:
+    """Show the current 6-week block plan, or start a new one."""
+    if request.method == "POST":
+        style = request.POST.get("training_style") or request.user.profile.training_style
+        if style not in TrainingStyle.values:
+            return HttpResponseBadRequest("invalid training_style")
+        TrainingBlock.objects.create(
+            owner=request.user,
+            training_style=style,
+            started_on=timezone.localdate(),
+            length_weeks=BLOCK_LENGTH_WEEKS,
+        )
+        return redirect("routines:block")
+
+    current = TrainingBlock.objects.for_user(request.user).order_by("-started_on").first()
+    status = (
+        block_status(current.training_style, current.started_on, timezone.localdate())
+        if current
+        else None
+    )
+    return render(
+        request,
+        "routines/block.html",
+        {
+            "training_block": current,
+            "status": status,
+            "training_styles": TrainingStyle.choices,
+            "default_style": request.user.profile.training_style,
+        },
+    )

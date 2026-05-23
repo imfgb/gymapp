@@ -81,6 +81,9 @@ class Profile(models.Model):
         choices=ActivityLevel.choices,
         default=ActivityLevel.MODERATE,
     )
+    # Liked-food slugs from gymapp.services.nutrition.FOOD_CATALOG. Drives the
+    # meal-slot scaffolding (Phase 3 meal-slots).
+    food_preferences = models.JSONField(default=list, blank=True)
 
     # Coaching prefs
     training_style = models.CharField(

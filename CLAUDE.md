@@ -285,8 +285,9 @@ Detail → `ROADMAP.md`.
 **Phase 3 — Nutrition: in progress (started 2026-05-23).** Features landed:
 
 - **nutrition-targets** (2026-05-23): `users.Profile` gained `sex` (`Sex` choices, blank-default) + `activity_level` (`ActivityLevel` choices, default moderate); migration `users.0002`. `gymapp/services/nutrition` is now a real `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE (`ACTIVITY_FACTORS` 1.2–1.9) → goal calorie multiplier (`GOAL_CALORIE_MULTIPLIER`: cut 0.80, bulk/hypertrophy 1.10, strength 1.05, recomp/maintain 1.00) → macro split (protein 2.0 g/kg, **2.2 on a cut**; fat 0.8 g/kg; carbs fill remaining kcal, clamped ≥ 0). `daily_target_for_user(user)` pulls bodyweight from the latest `UserMetricSnapshot` + height/DOB/sex from `Profile`, returning `(MacroTarget | None, missing_fields)`. New **`gymapp.apps.nutrition`** app (no models yet, like `dashboard`) mounts `/nutrition/` showing today's kcal + macros, or an amber "completa tu perfil" prompt listing exactly what's missing. Nav **"Nutrición"** link; profile editor (`metrics:profile`) extended with sex + activity selects. The `recommend()` Protocol is the Phase 4 AI seam.
+- **food-preferences** (2026-05-23): `users.Profile.food_preferences` (`JSONField(default=list)`, migration `users.0003`) stores a flat list of liked-food slugs. The catalogue lives as a constant in `services/nutrition` — `FOOD_CATALOG` groups protein/carb/vegetable/fat with English slug + Spanish label (no DB table; a deterministic stub plan doesn't need one). Helpers: `grouped_catalog(selected)`, `clean_food_preferences(slugs)` (keeps only known slugs, deduped, in catalogue order), `food_label`, `all_food_slugs`. Editor at `nutrition:preferences` (grouped checkboxes); the nutrition page shows the selected count + an "Editar" link (rendered regardless of profile completeness). Feeds the upcoming meal-slots.
 
-Phase 3 features still queued: **food-preferences**, then **meal-slots** (the latter closes the Phase 3 exit criterion: daily target + meal plan respecting preferences).
+Phase 3 features still queued: **meal-slots** (closes the Phase 3 exit criterion: daily target + meal plan respecting preferences).
 
 **Bug fixes applied (2026-05-21):**
 
@@ -296,7 +297,7 @@ Phase 3 features still queued: **food-preferences**, then **meal-slots** (the la
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 168 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 179 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

@@ -6,4 +6,5 @@ app_name = "nutrition"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("preferencias/", views.preferences, name="preferences"),
 ]

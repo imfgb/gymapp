@@ -110,8 +110,8 @@
       "id": "phase3-food-preferences",
       "phase": 3,
       "title": "Food + vegetable preferences",
-      "status": "queued",
-      "summary": "Profile fields storing food/vegetable preferences as a tag list + editor. Feed the meal-slot scaffolding."
+      "status": "done",
+      "summary": "Profile.food_preferences JSONField (list of slugs from services.nutrition.FOOD_CATALOG: protein/carb/vegetable/fat, English slug + Spanish label). Editor at nutrition:preferences (grouped checkboxes; POST keeps only known slugs via clean_food_preferences). Count shown on the nutrition page. Migration users.0003."
     },
     {
       "id": "phase3-meal-slots",

@@ -61,4 +61,17 @@
     </div>
   </section>
 {% endif %}
+
+{# Food preferences are independent of having a complete profile for the calorie calc. #}
+<section class="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-sm uppercase tracking-wide text-slate-500">Preferencias de comida</h2>
+      <p class="mt-1 text-sm text-slate-700">
+        {% if preference_count %}{{ preference_count }} alimento{{ preference_count|pluralize }} seleccionado{{ preference_count|pluralize }}.{% else %}Aún no eliges tus alimentos favoritos.{% endif %}
+      </p>
+    </div>
+    <a href="{% url 'nutrition:preferences' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">Editar</a>
+  </div>
+</section>
 {% endblock %}

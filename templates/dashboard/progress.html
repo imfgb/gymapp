@@ -7,6 +7,22 @@
   <p class="text-sm text-slate-500">Tu volumen de entrenamiento</p>
 </header>
 
+{# ============ DELOAD RECOMMENDATION ============ #}
+{% if deload.reason != "no_recent_training" %}
+  <section class="mb-6 rounded-lg border p-4 {% if deload.recommended %}border-amber-300 bg-amber-50{% else %}border-slate-200 bg-white{% endif %}">
+    {% if deload.recommended %}
+      <p class="font-medium text-amber-900">🟠 Considera una semana de descarga</p>
+      <p class="mt-1 text-sm text-amber-800">
+        Llevas {{ deload.weeks_accumulated }} semanas acumulando volumen sin bajar. Una semana ligera ayuda a recuperar y seguir progresando.
+      </p>
+    {% else %}
+      <p class="text-sm text-slate-600">
+        Llevas <span class="font-medium">{{ deload.weeks_accumulated }}</span> de {{ deload.threshold }} semanas acumulando volumen. Te sugeriremos una descarga al llegar a {{ deload.threshold }}.
+      </p>
+    {% endif %}
+  </section>
+{% endif %}
+
 <div class="mb-6 grid grid-cols-2 gap-3">
   <div class="rounded-lg border border-slate-200 bg-white p-4">
     <p class="text-2xl font-bold tabular-nums">{{ this_week_volume }} <span class="text-base font-normal text-slate-500">kg</span></p>

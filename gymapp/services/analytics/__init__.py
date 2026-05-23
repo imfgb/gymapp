@@ -13,6 +13,7 @@ seam needed) — same shape as `services.goals`.
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -33,6 +34,20 @@ class MuscleWeek:
     muscle: str
     sets: int
     volume_kg: int
+
+
+# Deload heuristic: suggest a light week after this many consecutive training
+# weeks without a week light enough to count as a deload.
+ACCUMULATION_WEEKS = 5
+LIGHT_WEEK_RATIO = 0.6  # a week ≤ 60% of the run's peak tonnage already deloads
+
+
+@dataclass(frozen=True)
+class DeloadAdvice:
+    recommended: bool
+    weeks_accumulated: int
+    threshold: int
+    reason: str  # "accumulated_fatigue" | "accumulating" | "no_recent_training"
 
 
 def _monday(d: date) -> date:
@@ -110,3 +125,41 @@ def sets_by_muscle(user, *, today: date | None = None) -> list[MuscleWeek]:
         key=lambda m: m.sets,
         reverse=True,
     )
+
+
+def deload_recommendation(
+    user, *, today: date | None = None, threshold: int = ACCUMULATION_WEEKS
+) -> DeloadAdvice:
+    """Suggest a deload after enough consecutive hard weeks.
+
+    Looks at completed weeks (the current, partial week is ignored), counts the
+    trailing run of training weeks (sets > 0), and stops counting at any week
+    whose tonnage already dipped to a deload level (≤ `LIGHT_WEEK_RATIO` of the
+    run's median). Using the median (not the peak) keeps one unusually big week
+    from masking a steady block. If the count reaches `threshold`, a deload is
+    recommended.
+    """
+    today = today or timezone.localdate()
+    this_monday = _monday(today)
+    weeks = weekly_volume(user, weeks=threshold + 4, today=today)
+    completed = [w for w in weeks if w.week_start < this_monday]
+
+    run: list[WeeklyPoint] = []
+    for w in reversed(completed):
+        if w.sets > 0:
+            run.append(w)
+        else:
+            break
+    if not run:
+        return DeloadAdvice(False, 0, threshold, "no_recent_training")
+
+    reference = statistics.median(w.volume_kg for w in run)
+    accumulated = 0
+    for w in run:  # run is newest-first
+        if reference and w.volume_kg <= LIGHT_WEEK_RATIO * reference:
+            break
+        accumulated += 1
+
+    recommended = accumulated >= threshold
+    reason = "accumulated_fatigue" if recommended else "accumulating"
+    return DeloadAdvice(recommended, accumulated, threshold, reason)

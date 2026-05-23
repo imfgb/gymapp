@@ -12,7 +12,11 @@ from gymapp.apps.metrics.models import UserMetricSnapshot
 from gymapp.apps.prs.models import PersonalRecord
 from gymapp.apps.routines.models import Routine, SkippedDay, Weekday, WeeklySplit
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
-from gymapp.services.analytics import sets_by_muscle, weekly_volume
+from gymapp.services.analytics import (
+    deload_recommendation,
+    sets_by_muscle,
+    weekly_volume,
+)
 from gymapp.services.goals import current_goal, monthly_goal_progress
 
 
@@ -118,10 +122,13 @@ def home(request):
     goal = current_goal(request.user, today)
     goal_progress = monthly_goal_progress(goal) if goal else []
 
+    deload = deload_recommendation(request.user, today=today)
+
     return render(
         request,
         "dashboard/home.html",
         {
+            "deload": deload,
             "today_routine_day": today_entry["routine_day"],
             "today_skipped": today_entry["is_skipped"],
             "in_progress": in_progress,
@@ -171,5 +178,6 @@ def progress(request):
             "muscle_rows": muscle_rows,
             "this_week_volume": weekly_rows[-1]["volume_kg"] if weekly_rows else 0,
             "this_week_sets": sum(m["sets"] for m in muscle_rows),
+            "deload": deload_recommendation(request.user),
         },
     )

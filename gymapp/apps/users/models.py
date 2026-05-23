@@ -31,6 +31,21 @@ class TrainingGoal(models.TextChoices):
     MAINTAIN = "maintain", "Maintain"
 
 
+class Sex(models.TextChoices):
+    MALE = "male", "Male"
+    FEMALE = "female", "Female"
+
+
+class ActivityLevel(models.TextChoices):
+    """Mapped to a TDEE multiplier in `gymapp.services.nutrition`."""
+
+    SEDENTARY = "sedentary", "Sedentary"
+    LIGHT = "light", "Lightly active"
+    MODERATE = "moderate", "Moderately active"
+    ACTIVE = "active", "Active"
+    VERY_ACTIVE = "very_active", "Very active"
+
+
 class User(AbstractUser):
     """Custom user: email as username, no first/last name required."""
 
@@ -60,6 +75,12 @@ class Profile(models.Model):
     # Baseline body data — height & date_of_birth don't really change.
     height_cm = models.PositiveSmallIntegerField(null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
+    sex = models.CharField(max_length=6, choices=Sex.choices, blank=True, default="")
+    activity_level = models.CharField(
+        max_length=12,
+        choices=ActivityLevel.choices,
+        default=ActivityLevel.MODERATE,
+    )
 
     # Coaching prefs
     training_style = models.CharField(

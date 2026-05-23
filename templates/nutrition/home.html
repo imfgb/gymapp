@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Nutrición · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Nutrición</h1>
+  <p class="text-sm text-slate-500">Tu objetivo de hoy</p>
+</header>
+
+{% if target %}
+  <section class="mb-8 rounded-lg border border-slate-200 bg-white p-6">
+    <div class="mb-4 flex items-baseline justify-between">
+      <h2 class="text-sm uppercase tracking-wide text-slate-500">Calorías</h2>
+      <span class="text-xs rounded-full bg-brand px-2 py-1 font-medium text-ink">
+        {% if goal == "cut" %}Déficit
+        {% elif goal == "bulk" or goal == "hypertrophy" %}Superávit
+        {% elif goal == "strength" %}Ligero superávit
+        {% else %}Mantenimiento{% endif %}
+      </span>
+    </div>
+    <p class="text-4xl font-bold tabular-nums">{{ target.calories }} <span class="text-lg font-normal text-slate-500">kcal</span></p>
+
+    <div class="mt-6 grid grid-cols-3 gap-3">
+      <div class="rounded-md bg-slate-50 p-4 text-center">
+        <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ target.protein_g }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">g proteína</p>
+      </div>
+      <div class="rounded-md bg-slate-50 p-4 text-center">
+        <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ target.carbs_g }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">g carbohidratos</p>
+      </div>
+      <div class="rounded-md bg-slate-50 p-4 text-center">
+        <p class="text-2xl font-semibold tabular-nums text-slate-900">{{ target.fat_g }}</p>
+        <p class="text-xs uppercase tracking-wide text-slate-500">g grasa</p>
+      </div>
+    </div>
+  </section>
+  <p class="text-xs text-slate-400">
+    Cálculo determinista (Mifflin-St Jeor → TDEE por nivel de actividad → ajuste según tu meta).
+    Ajusta tu meta y datos en <a href="{% url 'metrics:profile' %}" class="underline">tu perfil</a>.
+  </p>
+{% else %}
+  <section class="rounded-lg border border-amber-200 bg-amber-50 p-6">
+    <h2 class="mb-2 text-lg font-medium text-amber-900">Faltan algunos datos</h2>
+    <p class="mb-3 text-sm text-amber-800">Para calcular tus calorías y macros necesitamos:</p>
+    <ul class="mb-4 list-inside list-disc text-sm text-amber-800">
+      {% for field in missing %}
+        <li>
+          {% if field == "weight" %}Tu peso actual (registra una medición)
+          {% elif field == "height" %}Tu altura
+          {% elif field == "date_of_birth" %}Tu fecha de nacimiento
+          {% elif field == "sex" %}Tu sexo{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="flex flex-wrap gap-2">
+      {% if "weight" in missing %}
+        <a href="{% url 'metrics:create' %}" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">Registrar peso</a>
+      {% endif %}
+      <a href="{% url 'metrics:profile' %}" class="rounded-md border border-amber-300 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100">Completar perfil</a>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

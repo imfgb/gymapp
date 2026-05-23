@@ -79,3 +79,25 @@ def test_goals_page_requires_login(client):
     resp = client.get(reverse("metrics:goals"))
     assert resp.status_code == 302
     assert "/auth/login" in resp.url
+
+
+@pytest.mark.django_db
+def test_profile_edit_persists_sex_and_activity(alice, client):
+    client.force_login(alice)
+    resp = client.post(
+        reverse("metrics:profile"),
+        {
+            "height_cm": "180",
+            "date_of_birth": "1996-05-23",
+            "sex": "male",
+            "activity_level": "active",
+            "training_style": "powerbuilding",
+            "training_goal": "bulk",
+            "default_rest_seconds": "120",
+        },
+    )
+    assert resp.status_code == 302
+    alice.profile.refresh_from_db()
+    assert alice.profile.sex == "male"
+    assert alice.profile.activity_level == "active"
+    assert alice.profile.training_goal == "bulk"

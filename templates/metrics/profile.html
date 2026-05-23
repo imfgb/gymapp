@@ -21,6 +21,27 @@
   </label>
 
   <label class="block">
+    <span class="text-sm text-slate-700">Sexo</span>
+    <select name="sex" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+      <option value="" {% if not profile.sex %}selected{% endif %}>—</option>
+      <option value="male" {% if profile.sex == "male" %}selected{% endif %}>Hombre</option>
+      <option value="female" {% if profile.sex == "female" %}selected{% endif %}>Mujer</option>
+    </select>
+    <span class="mt-1 block text-xs text-slate-400">Se usa para el cálculo de calorías (Mifflin-St Jeor).</span>
+  </label>
+
+  <label class="block">
+    <span class="text-sm text-slate-700">Nivel de actividad</span>
+    <select name="activity_level" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+      <option value="sedentary" {% if profile.activity_level == "sedentary" %}selected{% endif %}>Sedentario (poco o nada de ejercicio)</option>
+      <option value="light" {% if profile.activity_level == "light" %}selected{% endif %}>Ligero (1-3 días/sem)</option>
+      <option value="moderate" {% if profile.activity_level == "moderate" %}selected{% endif %}>Moderado (3-5 días/sem)</option>
+      <option value="active" {% if profile.activity_level == "active" %}selected{% endif %}>Activo (6-7 días/sem)</option>
+      <option value="very_active" {% if profile.activity_level == "very_active" %}selected{% endif %}>Muy activo (físico + 2x/día)</option>
+    </select>
+  </label>
+
+  <label class="block">
     <span class="text-sm text-slate-700">Estilo de entrenamiento</span>
     <select name="training_style"
             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">

@@ -120,12 +120,13 @@ gymapp/                              # repo root
 | App | Responsibility | Key models |
 |---|---|---|
 | `core` | Cross-cutting mixins: `TimestampedModel`, `OwnerScopedQuerySet`, `OwnedMixin`, `OwnerScopedAdmin`. | (no models) |
-| `users` | Custom User (email-as-username), Profile (training prefs, height, DOB), one-shot password-change-on-first-login. | `User`, `Profile` |
+| `users` | Custom User (email-as-username), Profile (training prefs, height, DOB, sex, activity level), one-shot password-change-on-first-login. | `User`, `Profile` |
 | `exercises` | Curated + custom exercise catalogue. Each tags primary/secondary muscle groups, equipment, category. Self-referencing alternatives M2M. | `MuscleGroup`, `Equipment`, `Exercise` (nullable `owner` → null = global), `ExerciseAlternative` |
 | `routines` | User-defined workout templates and weekly schedule. | `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit` |
 | `workouts` | Actual training sessions and set-by-set logs. Drives the interactive checklist. | `WorkoutSession`, `ExerciseLog`, `SetLog` |
 | `prs` | Personal records per exercise per rep-count. Auto-detected from finished `SetLog`s + manual overrides. | `PersonalRecord` |
-| `metrics` | Body composition snapshots. Phase 2 adds `MonthlyGoal`. | `UserMetricSnapshot` |
+| `metrics` | Body composition snapshots + per-month goals. | `UserMetricSnapshot`, `MonthlyGoal` |
+| `nutrition` | Read-only nutrition page: today's calorie + macro target (computed by `services.nutrition`). Meal-slot models land with Phase 3 meal-slots. | (no models yet) |
 | `dashboard` | Read-only views: today's workout, this week's split, recent history, PR highlights. | (no models) |
 
 ---
@@ -140,7 +141,7 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `progression` | `recommend_next` returns the last completed weight×reps. | Linear/double progression → RPE-driven → AI-tuned. |
 | `substitution` | Delegates to `exercise_library`. | Multi-factor scoring (Phase 2). |
 | `coaching` | Facade re-exporting `progression` + `substitution`. | Orchestrates programming sessions / 6-week blocks. |
-| `nutrition` | Stub Protocol. | BMR (Mifflin-St Jeor), TDEE, macros (Phase 3). |
+| `nutrition` | `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE → goal-adjusted calories → macro split. `daily_target_for_user`. | AI meal rec (Phase 4). |
 | `analytics` | Stub Protocol. | Volume/intensity rollups (Phase 4). |
 
 **The AI seam:** every service exposes a `Strategy` (Protocol) and a `Deterministic*` implementation. A future `LLMStrategy` (Claude API) can be selected via settings without touching call sites. Document the contract in `docs/service_layer.md`.
@@ -279,7 +280,13 @@ Detail → `ROADMAP.md`.
 - **warmup-generation** (2026-05-22): `services/warmup.warmup_scheme()` ramps 40/60/80% of the working weight, snapped to **loadable** weights per equipment (barbell/smith → 5 kg steps @ 20 kg bar, since the smallest plate 2.5 kg loads both sides; ez-bar → 5 kg @ 10 kg; else 2.5 kg), never ≥ working. **Auto-generated on session start** for barbell/smith lifts with a known weight (`AUTO_WARMUP_EQUIPMENT`); per-exercise **"Calentamiento"** button (`workouts:add_warmups`, idempotent regen) for the rest. Warm-ups stay excluded from the progress counter and PRs.
 - **monthly-goals** (2026-05-22): `metrics.MonthlyGoal` (one row per `owner` + `year` + `month`; unique constraint + month-range CHECK; nullable `target_sessions` / `target_volume_kg` / `target_bodyweight_kg`, migration `metrics.0002`). New service `gymapp.services.goals.monthly_goal_progress(goal)` returns `GoalMetric` rows (only for targets that are set): sessions = count of FINISHED sessions started in the month; volume = `Sum(weight_kg * reps)` over completed, non-warm-up working sets; bodyweight = baseline-relative progress (baseline = latest snapshot before the month) that fills toward the target in either direction (cut or bulk), `reached` within ±0.5 kg. Editor at `metrics:goals` (GET shows progress bars, POST upserts the current month). Dashboard "Metas del mes" card (between week view and the recent grid) + nav **"Metas"** link. **This completes Phase 2.**
 
-**Phase 2 — Programming: complete (2026-05-22).** All Phase 2 features in `.claude/feature_list.json` are `done`. Both exit criteria met: recommended weight×reps on every working set (progression), and "swap exercise returns ranked alternatives" (substitution-scoring). Next: **Phase 3 — Nutrition** (BMR / TDEE / macros), per ROADMAP.md.
+**Phase 2 — Programming: complete (2026-05-22).** All Phase 2 features in `.claude/feature_list.json` are `done`. Both exit criteria met: recommended weight×reps on every working set (progression), and "swap exercise returns ranked alternatives" (substitution-scoring).
+
+**Phase 3 — Nutrition: in progress (started 2026-05-23).** Features landed:
+
+- **nutrition-targets** (2026-05-23): `users.Profile` gained `sex` (`Sex` choices, blank-default) + `activity_level` (`ActivityLevel` choices, default moderate); migration `users.0002`. `gymapp/services/nutrition` is now a real `DeterministicNutrition`: Mifflin-St Jeor BMR → TDEE (`ACTIVITY_FACTORS` 1.2–1.9) → goal calorie multiplier (`GOAL_CALORIE_MULTIPLIER`: cut 0.80, bulk/hypertrophy 1.10, strength 1.05, recomp/maintain 1.00) → macro split (protein 2.0 g/kg, **2.2 on a cut**; fat 0.8 g/kg; carbs fill remaining kcal, clamped ≥ 0). `daily_target_for_user(user)` pulls bodyweight from the latest `UserMetricSnapshot` + height/DOB/sex from `Profile`, returning `(MacroTarget | None, missing_fields)`. New **`gymapp.apps.nutrition`** app (no models yet, like `dashboard`) mounts `/nutrition/` showing today's kcal + macros, or an amber "completa tu perfil" prompt listing exactly what's missing. Nav **"Nutrición"** link; profile editor (`metrics:profile`) extended with sex + activity selects. The `recommend()` Protocol is the Phase 4 AI seam.
+
+Phase 3 features still queued: **food-preferences**, then **meal-slots** (the latter closes the Phase 3 exit criterion: daily target + meal plan respecting preferences).
 
 **Bug fixes applied (2026-05-21):**
 
@@ -289,7 +296,7 @@ Detail → `ROADMAP.md`.
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 154 tests passing (2026-05-22).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 168 tests passing (2026-05-23).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 

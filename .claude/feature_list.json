@@ -98,6 +98,27 @@
       "title": "Monthly goals",
       "status": "done",
       "summary": "MonthlyGoal model (per user+month, nullable session/volume/bodyweight targets). gymapp.services.goals.monthly_goal_progress computes progress from finished sessions, completed working sets (excludes warm-ups), and bodyweight snapshots (baseline-relative, direction-aware). Editor at metrics:goals (upserts current month); progress card on the dashboard + nav 'Metas' link."
+    },
+    {
+      "id": "phase3-nutrition-targets",
+      "phase": 3,
+      "title": "Daily calorie + macro targets (BMR/TDEE/macros)",
+      "status": "done",
+      "summary": "users.Profile gains sex + activity_level. gymapp.services.nutrition: Mifflin-St Jeor BMR, TDEE via ACTIVITY_FACTORS, goal calorie multiplier (cut 0.80 / bulk+hypertrophy 1.10 / strength 1.05 / recomp+maintain 1.00), macro split (protein 2.0 g/kg, 2.2 on cut; fat 0.8 g/kg; carbs fill, clamped at 0). daily_target_for_user(user) -> (MacroTarget|None, missing_fields). New gymapp.apps.nutrition app + /nutrition/ page shows today's kcal+macros or a complete-profile prompt; nav 'Nutrición' link; profile editor extended."
+    },
+    {
+      "id": "phase3-food-preferences",
+      "phase": 3,
+      "title": "Food + vegetable preferences",
+      "status": "queued",
+      "summary": "Profile fields storing food/vegetable preferences as a tag list + editor. Feed the meal-slot scaffolding."
+    },
+    {
+      "id": "phase3-meal-slots",
+      "phase": 3,
+      "title": "Basic meal slot scaffolding",
+      "status": "queued",
+      "summary": "Breakfast/lunch/dinner/snack stub templates that draw from the user's food preferences, shown on the Nutrition page. Satisfies the Phase 3 exit criterion (daily target + meal plan respecting preferences)."
     }
   ]
 }

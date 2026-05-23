@@ -23,6 +23,43 @@ def alice(db):
 
 
 @pytest.mark.django_db
+def test_progress_page_renders_for_empty_user(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:progress"))
+    assert resp.status_code == 200
+    assert b"Progreso" in resp.content
+    assert b"Volumen por semana" in resp.content
+
+
+@pytest.mark.django_db
+def test_progress_page_requires_login(client):
+    resp = client.get(reverse("dashboard:progress"))
+    assert resp.status_code == 302
+    assert "/auth/login" in resp.url
+
+
+@pytest.mark.django_db
+def test_progress_page_shows_muscle_volume(alice, client, clean_catalog):
+    from decimal import Decimal
+
+    from gymapp.apps.exercises.models import MuscleGroup
+
+    bench = ExerciseFactory(slug="bench-press", equipment=EquipmentFactory(slug="barbell"))
+    chest = MuscleGroup.objects.create(slug="chest", name="Pecho", region="chest")
+    bench.primary_muscles.add(chest)
+    sess = workouts_service.start_session(alice)
+    elog = sess.exercise_logs.create(exercise=bench, ordering=0)
+    s = elog.set_logs.create(ordering=0)
+    workouts_service.complete_set(s, weight_kg=Decimal("100"), reps=5)
+    workouts_service.finish_session(sess)
+
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:progress"))
+    assert resp.status_code == 200
+    assert b"Pecho" in resp.content
+
+
+@pytest.mark.django_db
 def test_dashboard_renders_for_empty_user(alice, client):
     client.force_login(alice)
     resp = client.get(reverse("dashboard:home"))

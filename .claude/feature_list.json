@@ -119,6 +119,27 @@
       "title": "Basic meal slot scaffolding",
       "status": "done",
       "summary": "services.nutrition.build_meal_plan(target, preferences) splits the daily MacroTarget across 4 slots (MEAL_SLOTS: breakfast 25% / lunch 35% / dinner 30% / snack 10%) and suggests foods per slot from the user's preferences (SLOT_COMPONENTS categories, rotated by slot index). Rendered on the Nutrition page below the macros. Closes the Phase 3 exit criterion."
+    },
+    {
+      "id": "phase5-analytics-volume",
+      "phase": 5,
+      "title": "Analytics service + Progreso page (volume rollups)",
+      "status": "done",
+      "summary": "services.analytics: weekly_volume(user, weeks) (tonnage + working-set count per Monday-anchored week, zero-filled) and sets_by_muscle(user) (this week's hard sets + volume per primary muscle group, full counting; warm-ups/incomplete excluded). dashboard:progress (/progreso/) renders an 8-week tonnage trend + sets-per-muscle bars; nav 'Progreso' link."
+    },
+    {
+      "id": "phase5-deload-suggestions",
+      "phase": 5,
+      "title": "Deload suggestions",
+      "status": "queued",
+      "summary": "Auto-detect deload need from tonnage trend + missed-rep frequency; surface a recommendation card on the dashboard/progress page."
+    },
+    {
+      "id": "phase5-block-programming",
+      "phase": 5,
+      "title": "6-week block programming",
+      "status": "queued",
+      "summary": "Block templates per training style; dashboard shows the current block week + plan."
     }
   ]
 }

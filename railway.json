@@ -5,9 +5,9 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 30 --access-logfile -",
+    "startCommand": "python manage.py migrate --noinput && (python manage.py createsuperuser --noinput || true) && gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 30 --access-logfile -",
     "healthcheckPath": "/auth/login/",
-    "healthcheckTimeout": 30,
+    "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }

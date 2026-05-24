@@ -118,7 +118,7 @@
       <li class="rounded-md border p-3 text-sm
                  {% if day.is_today %}border-brand bg-brand text-ink{% elif day.is_skipped %}border-slate-200 bg-slate-100{% else %}border-slate-200 bg-white{% endif %}">
         <p class="text-xs uppercase">{{ day.weekday_label|slice:":3" }}</p>
-        <p class="mt-1 font-medium">
+        <p class="mt-1 break-words font-medium leading-tight">
           {% if day.is_skipped %}
             <span class="text-slate-400">No iré 🛌</span>
           {% elif day.routine_day %}

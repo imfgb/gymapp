@@ -10,6 +10,7 @@ kept meals are persisted.
 from __future__ import annotations
 
 from django.db import models
+from django.utils import timezone
 
 from gymapp.apps.core.models import OwnedMixin, OwnerScopedQuerySet, TimestampedModel
 
@@ -50,3 +51,35 @@ class SavedMeal(OwnedMixin, TimestampedModel):
             else:
                 out.append({**it, "label": food_label(it.get("slug", ""))})
         return out
+
+
+class Supplement(OwnedMixin, TimestampedModel):
+    """A supplement the user tracks (creatine, omega-3, …).
+
+    `last_taken_at` records the most recent "taken" stamp. Whether it counts as
+    taken *today* is derived against the local calendar day, so it resets every
+    day with no background job (CLAUDE.md §15).
+    """
+
+    name = models.CharField(max_length=60)
+    last_taken_at = models.DateTimeField(null=True, blank=True)
+
+    objects = OwnerScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "name"], name="uniq_supplement_per_owner"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.owner.email})"
+
+    @property
+    def taken_today(self) -> bool:
+        return (
+            self.last_taken_at is not None
+            and timezone.localdate(self.last_taken_at) == timezone.localdate()
+        )

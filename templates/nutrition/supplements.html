@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Suplementos · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Suplementos</h1>
+  <p class="text-sm text-slate-500">Opcional. Elige los que tomas y márcalos cada día desde Nutrición.</p>
+</header>
+
+{# ============ MIS SUPLEMENTOS ============ #}
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Mis suplementos</h2>
+  {% if supplements %}
+    <ul class="divide-y divide-slate-100">
+      {% for supp in supplements %}
+        <li class="flex items-center justify-between py-2">
+          <span class="text-sm text-slate-700">{{ supp.name }}</span>
+          <form method="post" action="{% url 'nutrition:supplement_delete' supp.id %}">
+            {% csrf_token %}
+            <button class="text-sm text-slate-400 hover:text-red-600">Eliminar</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-slate-500">Aún no agregas suplementos.</p>
+  {% endif %}
+</section>
+
+{# ============ AGREGAR COMUNES ============ #}
+{% if suggestions %}
+  <section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+    <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Agregar comunes</h2>
+    <div class="flex flex-wrap gap-2">
+      {% for name in suggestions %}
+        <form method="post" action="{% url 'nutrition:supplement_add' %}">
+          {% csrf_token %}
+          <input type="hidden" name="name" value="{{ name }}">
+          <button class="rounded-full border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">+ {{ name }}</button>
+        </form>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{# ============ AGREGAR PERSONALIZADO ============ #}
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Agregar otro</h2>
+  <form method="post" action="{% url 'nutrition:supplement_add' %}" class="flex flex-wrap items-end gap-2">
+    {% csrf_token %}
+    <label class="text-xs text-slate-500">
+      <span class="mb-1 block">Nombre del suplemento</span>
+      <input type="text" name="name" maxlength="60" required placeholder="Ej. Tribulus"
+             class="block w-56 rounded-md border border-slate-300 px-3 py-2 text-sm">
+    </label>
+    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">Agregar</button>
+  </form>
+</section>
+
+<a href="{% url 'nutrition:home' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Volver a Nutrición</a>
+{% endblock %}

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -198,3 +198,19 @@ def test_suggested_plan_removed_from_page(alice, client):
     client.force_login(alice)
     resp = client.get(reverse("nutrition:home"))
     assert b"Plan sugerido" not in resp.content
+
+
+@pytest.mark.django_db
+def test_only_todays_meals_are_shown(alice, client):
+    # Yesterday's meal must not appear today (daily reset, no job).
+    old = SavedMeal.objects.create(owner=alice, slot="lunch", foods=[], calories=999)
+    SavedMeal.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timedelta(days=1)
+    )
+    today_meal = SavedMeal.objects.create(owner=alice, slot="breakfast", foods=[], calories=111)
+    client.force_login(alice)
+    resp = client.get(reverse("nutrition:home"))
+    body = resp.content.decode()
+    assert "111 kcal" in body  # today's
+    assert "999 kcal" not in body  # yesterday's gone
+    assert str(today_meal.calories) in body

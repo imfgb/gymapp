@@ -10,8 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from gymapp.apps.nutrition.models import SavedMeal
+from gymapp.apps.nutrition.models import SavedMeal, Supplement
 from gymapp.services.nutrition import (
+    COMMON_SUPPLEMENTS,
     MEAL_SLOTS,
     clean_food_preferences,
     daily_target_for_user,
@@ -27,8 +28,11 @@ _SLOT_ORDER = {key: i for i, (key, _, _) in enumerate(MEAL_SLOTS)}
 def home(request: HttpRequest) -> HttpResponse:
     profile = request.user.profile
     target, missing = daily_target_for_user(request.user)
+    # Only today's meals — each day starts fresh, so eaten marks "reset" at
+    # midnight without any background job.
+    today = timezone.localdate()
     saved_meals = sorted(
-        SavedMeal.objects.for_user(request.user)[:50],
+        SavedMeal.objects.for_user(request.user).filter(created_at__date=today),
         key=lambda m: (_SLOT_ORDER.get(m.slot, 9), m.created_at),
     )
     return render(
@@ -42,6 +46,7 @@ def home(request: HttpRequest) -> HttpResponse:
             "saved_meals": saved_meals,
             "slot_choices": [(key, label) for key, label, _ in MEAL_SLOTS],
             "has_preferences": bool(profile.food_preferences),
+            "supplements": Supplement.objects.for_user(request.user),
         },
     )
 
@@ -98,3 +103,41 @@ def preferences(request: HttpRequest) -> HttpResponse:
         "nutrition/preferences.html",
         {"catalog": grouped_catalog(profile.food_preferences)},
     )
+
+
+@login_required
+def supplements(request: HttpRequest) -> HttpResponse:
+    mine = Supplement.objects.for_user(request.user)
+    taken_names = {s.name for s in mine}
+    suggestions = [name for name in COMMON_SUPPLEMENTS if name not in taken_names]
+    return render(
+        request,
+        "nutrition/supplements.html",
+        {"supplements": mine, "suggestions": suggestions},
+    )
+
+
+@login_required
+@require_POST
+def supplement_add(request: HttpRequest) -> HttpResponse:
+    name = (request.POST.get("name") or "").strip()[:60]
+    if name:
+        Supplement.objects.get_or_create(owner=request.user, name=name)
+    return redirect("nutrition:supplements")
+
+
+@login_required
+@require_POST
+def supplement_delete(request: HttpRequest, supp_id: int) -> HttpResponse:
+    supp = get_object_or_404(Supplement.objects.for_user(request.user), pk=supp_id)
+    supp.delete()
+    return redirect("nutrition:supplements")
+
+
+@login_required
+@require_POST
+def supplement_take(request: HttpRequest, supp_id: int) -> HttpResponse:
+    supp = get_object_or_404(Supplement.objects.for_user(request.user), pk=supp_id)
+    supp.last_taken_at = None if supp.taken_today else timezone.now()
+    supp.save(update_fields=["last_taken_at", "updated_at"])
+    return redirect("nutrition:home")

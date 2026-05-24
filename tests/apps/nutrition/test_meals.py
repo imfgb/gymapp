@@ -61,12 +61,17 @@ def test_generate_meal_falls_back_to_a_template_without_prefs():
     assert meal.calories > 0
 
 
-def test_generate_meal_only_uses_liked_items():
-    # prefs cover two lunch templates fully (incl. their veg)
-    prefs = ["chicken", "rice", "broccoli", "lean_beef", "potato", "asparagus"]
-    for seed in range(6):
+def test_generate_meal_respects_liked_mains():
+    # protein/carb/fat (the macro-driving foods) must be liked; the vegetable is
+    # part of the recipe (a dish), so it isn't required to be a preference.
+    from gymapp.services.nutrition import FOOD_CATALOG
+
+    veg_slugs = {slug for slug, _ in FOOD_CATALOG["vegetable"]}
+    prefs = ["chicken", "rice", "lean_beef", "potato"]
+    for seed in range(8):
         meal = generate_meal("lunch", TARGET, prefs, rng=random.Random(seed))  # noqa: S311
-        assert {i.slug for i in meal.items}.issubset(set(prefs))
+        mains = {i.slug for i in meal.items if i.slug not in veg_slugs}
+        assert mains.issubset(set(prefs))
 
 
 # ---------------------------------------------------------------------------

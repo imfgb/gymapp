@@ -74,19 +74,22 @@ def test_preferences_select_a_matching_template():
     assert "Arroz" in plan["lunch"].foods
 
 
-def test_template_library_is_large_and_varied():
-    # generated combinatorially → hundreds of options per meal, lots of variety
-    assert len(MEAL_TEMPLATES) > 500
+def test_recipe_library_has_real_variety_per_slot():
     breakfasts = [t for t in MEAL_TEMPLATES if "breakfast" in t.slots]
     lunches = [t for t in MEAL_TEMPLATES if "lunch" in t.slots]
     snacks = [t for t in MEAL_TEMPLATES if "snack" in t.slots]
-    assert len(breakfasts) > 50
-    assert len(lunches) > 200
-    assert len(snacks) > 50
+    assert len(breakfasts) >= 12
+    assert len(lunches) >= 20
+    assert len(snacks) >= 10
+
+
+def test_every_recipe_has_a_real_name():
+    for tpl in MEAL_TEMPLATES:
+        assert tpl.name and len(tpl.name) > 4  # a dish name, not a slug pile
 
 
 def test_savory_plates_never_use_sweet_fats():
-    # the whole point of templates: no incoherent combos (e.g. steak + peanut butter)
+    # the whole point of recipes: no incoherent combos (e.g. steak + peanut butter)
     for tpl in MEAL_TEMPLATES:
         if "lunch" not in tpl.slots and "dinner" not in tpl.slots:
             continue
@@ -106,22 +109,18 @@ def test_breakfast_generation_is_varied_with_rich_prefs():
         "whey_isolate", "whey_concentrate", "casein", "greek_yogurt",
         "oats", "banana", "granola", "peanut_butter", "almonds", "nuts",
     ]
-    assert len(eligible_templates("breakfast", prefs)) > 10
+    assert len(eligible_templates("breakfast", prefs)) >= 5
     seen = set()
     for s in range(30):
         meal = generate_meal("breakfast", TARGET, prefs, rng=random.Random(s))  # noqa: S311
         seen.add(tuple(sorted(i.slug for i in meal.items)))
-    assert len(seen) > 8  # not "always the same breakfast"
+    assert len(seen) >= 5  # not "always the same breakfast"
 
 
-def test_vegetable_rotates_among_liked_ones():
-    prefs = ["chicken", "rice", "broccoli", "spinach", "asparagus"]
-    vegs_seen = set()
-    for s in range(20):
-        meal = generate_meal("lunch", TARGET, prefs, rng=random.Random(s))  # noqa: S311
-        for i in meal.items:
-            if i.slug in {"broccoli", "spinach", "asparagus"}:
-                vegs_seen.add(i.slug)
-        # only liked items ever appear
-        assert {i.slug for i in meal.items}.issubset(set(prefs))
-    assert len(vegs_seen) >= 2  # the veg actually varies
+def test_generated_meal_carries_recipe_name_and_prep_note():
+    # the shake recipe has a prep note ("licúa con agua o leche")
+    meal = generate_meal(
+        "breakfast", TARGET, ["whey_isolate", "banana", "oats"], rng=random.Random(0)  # noqa: S311
+    )
+    assert meal.name
+    assert meal.note  # both eligible breakfasts here carry a prep note

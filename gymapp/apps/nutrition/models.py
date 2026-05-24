@@ -23,6 +23,8 @@ class SavedMeal(OwnedMixin, TimestampedModel):
         SNACK = "snack", "Snack"
 
     slot = models.CharField(max_length=12, choices=Slot.choices)
+    name = models.CharField(max_length=80, blank=True, default="")
+    note = models.CharField(max_length=160, blank=True, default="")
     # List of {slug, grams, protein_g, carbs_g, fat_g, calories} (raw grams).
     foods = models.JSONField(default=list)
     calories = models.PositiveIntegerField(default=0)

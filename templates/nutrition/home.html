@@ -91,10 +91,14 @@
     <ul class="space-y-2">
       {% for meal in saved_meals %}
         <li class="rounded-lg border p-4 {% if meal.eaten_at %}border-emerald-200 bg-emerald-50{% else %}border-slate-200 bg-white{% endif %}">
-          <div class="flex items-baseline justify-between">
-            <span class="font-medium">{{ meal.get_slot_display }}</span>
-            <span class="tabular-nums text-sm text-slate-500">{{ meal.calories }} kcal · {{ meal.protein_g }}P · {{ meal.carbs_g }}C · {{ meal.fat_g }}G</span>
+          <div class="flex items-baseline justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">{{ meal.get_slot_display }}</p>
+              <h3 class="font-medium">{{ meal.name|default:meal.get_slot_display }}</h3>
+            </div>
+            <span class="whitespace-nowrap tabular-nums text-sm text-slate-500">{{ meal.calories }} kcal · {{ meal.protein_g }}P · {{ meal.carbs_g }}C · {{ meal.fat_g }}G</span>
           </div>
+          {% if meal.note %}<p class="mt-1 text-xs italic text-slate-500">{{ meal.note }}</p>{% endif %}
           {% if meal.items %}
             <ul class="mt-2 divide-y divide-slate-100 text-sm">
               {% for it in meal.items %}

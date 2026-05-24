@@ -46,6 +46,27 @@ PROTEIN_G_PER_KG = 2.0
 PROTEIN_G_PER_KG_CUT = 2.2  # higher on a deficit to spare lean mass
 FAT_G_PER_KG = 0.8
 
+# Common supplements offered as quick-add on the supplements page. The user can
+# also type a custom one. Just Spanish labels — supplements have no macro math.
+COMMON_SUPPLEMENTS: list[str] = [
+    "Creatina",
+    "Proteína (Whey)",
+    "Omega 3",
+    "BCAAs",
+    "Multivitamínico",
+    "Pre-entreno",
+    "Cafeína",
+    "Vitamina D",
+    "Magnesio",
+    "Zinc",
+    "Beta-alanina",
+    "Glutamina",
+    "Citrulina",
+    "Colágeno",
+    "Electrolitos",
+    "Ashwagandha",
+]
+
 # Curated food catalogue: English slug (domain) → Spanish label (UI). Grouped by
 # macro role so the meal-slot scaffolding can pull a protein + carb + veg + fat
 # from the user's liked items. Preferences are stored on `Profile` as a flat
@@ -299,45 +320,72 @@ class MealTemplate:
 _AM = ("breakfast", "snack")
 _PM = ("lunch", "dinner")
 
-MEAL_TEMPLATES: list[MealTemplate] = [
-    # breakfast / snack — shakes, oats, yogurt
-    MealTemplate("Avena con whey y plátano", _AM,
-                 (("oats", "carb"), ("whey_isolate", "protein"), ("banana", "carb"),
-                  ("peanut_butter", "fat"))),
-    MealTemplate("Batido de whey, avena y crema de almendra", _AM,
-                 (("whey_concentrate", "protein"), ("oats", "carb"), ("almond_butter", "fat"))),
-    MealTemplate("Yogur griego con granola y crema de cacahuate", _AM,
-                 (("greek_yogurt", "protein"), ("granola", "carb"), ("peanut_butter", "fat"))),
-    MealTemplate("Yogur griego con plátano y almendras", _AM,
-                 (("greek_yogurt", "protein"), ("banana", "carb"), ("almonds", "fat"))),
-    MealTemplate("Caseína con plátano y crema de cacahuate", ("snack",),
-                 (("casein", "protein"), ("banana", "carb"), ("peanut_butter", "fat"))),
-    MealTemplate("Huevos con pan integral y aguacate", ("breakfast",),
-                 (("eggs", "protein"), ("whole_wheat_bread", "carb"), ("avocado", "fat"))),
-    MealTemplate("Claras con avena y plátano", ("breakfast",),
-                 (("egg_whites", "protein"), ("oats", "carb"), ("banana", "carb"))),
-    # lunch / dinner — savory plates
-    MealTemplate("Pollo, arroz y brócoli", _PM,
-                 (("chicken", "protein"), ("rice", "carb"), ("broccoli", "veg"))),
-    MealTemplate("Bistec, papa y espárragos", _PM,
-                 (("lean_beef", "protein"), ("potato", "carb"), ("asparagus", "veg"))),
-    MealTemplate("Salmón, arroz integral y espinaca", _PM,
-                 (("salmon", "protein"), ("brown_rice", "carb"), ("spinach", "veg"))),
-    MealTemplate("Atún con pasta y jitomate", _PM,
-                 (("tuna", "protein"), ("pasta", "carb"), ("tomato", "veg"))),
-    MealTemplate("Pavo, camote y ejotes", _PM,
-                 (("turkey", "protein"), ("sweet_potato", "carb"), ("green_beans", "veg"))),
-    MealTemplate("Pollo, tortillas y pimiento", _PM,
-                 (("chicken", "protein"), ("tortilla", "carb"), ("pepper", "veg"))),
-    MealTemplate("Carne molida, arroz y calabacita", _PM,
-                 (("ground_beef", "protein"), ("rice", "carb"), ("zucchini", "veg"))),
-    MealTemplate("Tofu salteado con arroz y champiñón", _PM,
-                 (("tofu", "protein"), ("rice", "carb"), ("mushroom", "veg"))),
-    MealTemplate("Camarón con quinoa y espárragos", _PM,
-                 (("shrimp", "protein"), ("quinoa", "carb"), ("asparagus", "veg"))),
-    MealTemplate("Cerdo, arroz y zanahoria", _PM,
-                 (("pork", "protein"), ("rice", "carb"), ("carrot", "veg"))),
-]
+# Coherent building blocks. Templates are GENERATED from the cartesian product of
+# these pools (per style) so the catalogue is large and varied — hundreds of
+# breakfasts/lunches/dinners/snacks — while never pairing incoherent foods: sweet
+# nut-butters/chocolate only appear in sweet meals, eggs only in egg breakfasts,
+# savory meats only in savory plates. Adding a food to a pool multiplies variety.
+_SWEET_PROTEINS = ("whey_isolate", "whey_concentrate", "casein", "greek_yogurt")
+_SWEET_CARBS = ("oats", "banana", "granola", "rice_cakes", "honey", "bread", "whole_wheat_bread")
+_SWEET_FATS = ("peanut_butter", "almond_butter", "almonds", "nuts", "dark_chocolate")
+
+_EGG_PROTEINS = ("eggs", "egg_whites", "turkey_ham")
+_EGG_CARBS = ("whole_wheat_bread", "bread", "tortilla", "potato")
+_EGG_FATS = ("avocado", "cheese", "olive_oil", "nuts")
+
+_SAVORY_PROTEINS = ("chicken", "beef", "lean_beef", "ground_beef", "fish", "salmon",
+                    "tuna", "sardines", "pork", "turkey", "shrimp", "tofu")
+_SAVORY_CARBS = ("rice", "brown_rice", "potato", "sweet_potato", "pasta", "tortilla",
+                 "quinoa", "corn", "beans", "lentils", "chickpeas", "whole_wheat_bread")
+_SAVORY_VEGS = ("broccoli", "spinach", "lettuce", "tomato", "carrot", "zucchini",
+                "pepper", "cucumber", "onion", "mushroom", "green_beans", "asparagus", "nopal")
+
+# Light, two-ingredient savory snacks (sandwich / can style).
+_LIGHT_SNACKS = (
+    ("tuna", "rice_cakes"),
+    ("tuna", "whole_wheat_bread"),
+    ("turkey_ham", "whole_wheat_bread"),
+    ("turkey_ham", "tortilla"),
+    ("greek_yogurt", "granola"),
+    ("greek_yogurt", "honey"),
+)
+
+
+def _meal_name(protein: str, *rest: str) -> str:
+    labels = [food_label(protein), *[food_label(x) for x in rest]]
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} con {labels[1]}"
+    return f"{labels[0]} con {', '.join(labels[1:-1])} y {labels[-1]}"
+
+
+def _build_meal_templates() -> list[MealTemplate]:
+    out: list[MealTemplate] = []
+    for p in _SWEET_PROTEINS:
+        for c in _SWEET_CARBS:
+            for f in _SWEET_FATS:
+                out.append(MealTemplate(_meal_name(p, c, f), _AM,
+                           ((p, "protein"), (c, "carb"), (f, "fat"))))
+    for p in _EGG_PROTEINS:
+        for c in _EGG_CARBS:
+            for f in _EGG_FATS:
+                out.append(MealTemplate(_meal_name(p, c, f), ("breakfast",),
+                           ((p, "protein"), (c, "carb"), (f, "fat"))))
+    for p in _SAVORY_PROTEINS:
+        for c in _SAVORY_CARBS:
+            for v in _SAVORY_VEGS:
+                out.append(MealTemplate(_meal_name(p, c, v), _PM,
+                           ((p, "protein"), (c, "carb"), (v, "veg"))))
+    for p, c in _LIGHT_SNACKS:
+        out.append(MealTemplate(_meal_name(p, c), ("snack",),
+                   ((p, "protein"), (c, "carb"))))
+    return out
+
+
+MEAL_TEMPLATES: list[MealTemplate] = _build_meal_templates()
+
+_VEGETABLE_SLUGS = frozenset(slug for slug, _ in FOOD_CATALOG["vegetable"])
 
 
 def eligible_templates(slot_key: str, preferences) -> list[MealTemplate]:
@@ -445,21 +493,40 @@ def build_meal_plan(target: MacroTarget, preferences=None) -> list[MealSlot]:
     return slots
 
 
+def _apply_veg_preference(
+    tpl: MealTemplate, preferences, chooser: random.Random
+) -> MealTemplate:
+    """Swap a template's vegetable for one the user likes (if any).
+
+    Vegetables are interchangeable filler, so when the user has liked vegetables
+    we rotate among them — this both respects the preference and adds variety.
+    """
+    liked = [s for s in (preferences or []) if s in _VEGETABLE_SLUGS]
+    if not liked or not any(role == "veg" for _, role in tpl.ingredients):
+        return tpl
+    veg = chooser.choice(liked)
+    ingredients = tuple(
+        (veg, role) if role == "veg" else (slug, role) for slug, role in tpl.ingredients
+    )
+    return MealTemplate(tpl.name, tpl.slots, ingredients)
+
+
 def generate_meal(
     slot_key: str, target: MacroTarget, preferences, rng: random.Random | None = None
 ) -> GeneratedMeal:
     """Build one coherent meal for a slot from a curated template, in raw grams.
 
     Randomly (for variety) picks a meal template that fits the slot and matches
-    the user's preferences, then scales it to the slot's macro share. Because
-    templates are fixed sensible combinations, generated meals always make
-    culinary sense.
+    the user's preferences, rotates its vegetable through the user's liked ones,
+    then scales it to the slot's macro share. Because templates are coherent
+    combinations by construction, generated meals always make culinary sense.
     """
     chooser = rng or random
     templates = _templates_for(slot_key, preferences)
     if not templates:
         return GeneratedMeal(items=[], calories=0, protein_g=0, carbs_g=0, fat_g=0)
-    return _scale_template(chooser.choice(templates), slot_key, target)
+    tpl = _apply_veg_preference(chooser.choice(templates), preferences, chooser)
+    return _scale_template(tpl, slot_key, target)
 
 
 @dataclass(frozen=True)

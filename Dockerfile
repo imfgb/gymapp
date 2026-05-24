@@ -46,4 +46,4 @@ EXPOSE 8000
 # On Railway the railway.json startCommand drives the container; this CMD mirrors
 # it so the image behaves the same if run directly: migrate, optionally bootstrap
 # a superuser from DJANGO_SUPERUSER_* env vars, then serve.
-CMD ["sh", "-c", "python manage.py migrate --noinput; python manage.py createsuperuser --noinput </dev/null 2>&1 || true; exec gunicorn config.wsgi --bind 0.0.0.0:${PORT} --workers 2 --timeout 30 --access-logfile -"]
+CMD ["sh", "-c", "echo '>>> step: migrate'; python manage.py migrate --noinput; echo '>>> step: superuser'; python manage.py createsuperuser --noinput </dev/null 2>&1 || echo '>>> superuser skipped'; echo \">>> step: gunicorn on port ${PORT}\"; exec gunicorn config.wsgi --bind 0.0.0.0:${PORT} --workers 2 --timeout 30 --access-logfile -"]

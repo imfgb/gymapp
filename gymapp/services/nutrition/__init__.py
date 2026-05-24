@@ -230,6 +230,51 @@ def food_label(slug: str) -> str:
     return _FOOD_LABELS.get(slug, slug)
 
 
+# Household portions: slug → (grams per unit, singular, plural). Only foods where
+# a count/spoon/scoop is clearer than raw grams. Foods NOT listed (rice, oats,
+# chicken, tuna, honey, vegetables, yogurt…) stay in grams on purpose — e.g. tuna
+# is shown as cubed grams and honey in grams, per the user's preference.
+FOOD_PORTIONS: dict[str, tuple[float, str, str]] = {
+    "eggs": (50, "pieza", "piezas"),
+    "egg_whites": (33, "clara", "claras"),
+    "turkey_ham": (30, "rebanada", "rebanadas"),
+    "tortilla": (30, "pieza", "piezas"),
+    "bread": (28, "rebanada", "rebanadas"),
+    "whole_wheat_bread": (28, "rebanada", "rebanadas"),
+    "banana": (120, "pieza", "piezas"),
+    "rice_cakes": (10, "pieza", "piezas"),
+    "nopal": (80, "pieza", "piezas"),
+    "avocado": (140, "pieza", "piezas"),
+    "olive_oil": (14, "cucharada", "cucharadas"),
+    "coconut_oil": (14, "cucharada", "cucharadas"),
+    "peanut_butter": (16, "cucharada", "cucharadas"),
+    "almond_butter": (16, "cucharada", "cucharadas"),
+    "almonds": (28, "puño", "puños"),
+    "nuts": (28, "puño", "puños"),
+    "whey_isolate": (30, "medida", "medidas"),
+    "whey_concentrate": (30, "medida", "medidas"),
+    "casein": (30, "medida", "medidas"),
+    "cheese": (25, "rebanada", "rebanadas"),
+    "dark_chocolate": (10, "cuadrito", "cuadritos"),
+}
+
+
+def portion_label(slug: str, grams) -> str:
+    """Human portion for a food, e.g. "2 piezas", "1 cucharada", "1.5 medidas".
+
+    Returns "" for foods measured in grams or when the amount rounds below half a
+    unit (so we never show a misleading "0.5 aguacate" for a 20 g sliver).
+    """
+    entry = FOOD_PORTIONS.get(slug)
+    if not entry or not grams:
+        return ""
+    per, singular, plural = entry
+    units = round((grams / per) * 2) / 2  # nearest half-unit
+    if units <= 0:
+        return ""
+    return f"{units:g} {singular if units == 1 else plural}"
+
+
 def grouped_catalog(selected: list[str] | None = None) -> list[dict]:
     """Catalogue grouped by category for rendering, marking selected items."""
     chosen = set(selected or [])

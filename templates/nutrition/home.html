@@ -102,9 +102,9 @@
           {% if meal.items %}
             <ul class="mt-2 divide-y divide-slate-100 text-sm">
               {% for it in meal.items %}
-                <li class="flex items-baseline justify-between py-1">
-                  <span class="text-slate-700">{{ it.label }}{% if it.grams %} · <span class="tabular-nums font-medium">{{ it.grams }} g</span>{% endif %}</span>
-                  <span class="tabular-nums text-xs text-slate-400">{{ it.calories }} kcal · {{ it.protein_g }}P · {{ it.carbs_g }}C · {{ it.fat_g }}G</span>
+                <li class="flex items-baseline justify-between gap-2 py-1">
+                  <span class="text-slate-700">{{ it.label }}{% if it.portion %} · <span class="font-medium">{{ it.portion }}</span>{% endif %}{% if it.grams %} <span class="tabular-nums text-slate-400">({{ it.grams }} g)</span>{% endif %}</span>
+                  <span class="whitespace-nowrap tabular-nums text-xs text-slate-400">{{ it.calories }} kcal · {{ it.protein_g }}P · {{ it.carbs_g }}C · {{ it.fat_g }}G</span>
                 </li>
               {% endfor %}
             </ul>

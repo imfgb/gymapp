@@ -65,6 +65,8 @@ def generate_meal_view(request: HttpRequest) -> HttpResponse:
     SavedMeal.objects.create(
         owner=request.user,
         slot=slot,
+        name=meal.name,
+        note=meal.note,
         foods=[asdict(i) for i in meal.items],
         calories=meal.calories,
         protein_g=meal.protein_g,

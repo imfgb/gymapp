@@ -12,6 +12,7 @@ from gymapp.services.nutrition import (
     build_meal_plan,
     eligible_templates,
     generate_meal,
+    portion_label,
 )
 
 TARGET = MacroTarget(calories=2000, protein_g=160, carbs_g=200, fat_g=60)
@@ -115,6 +116,30 @@ def test_breakfast_generation_is_varied_with_rich_prefs():
         meal = generate_meal("breakfast", TARGET, prefs, rng=random.Random(s))  # noqa: S311
         seen.add(tuple(sorted(i.slug for i in meal.items)))
     assert len(seen) >= 5  # not "always the same breakfast"
+
+
+def test_portion_label_uses_household_units():
+    assert portion_label("eggs", 100) == "2 piezas"
+    assert portion_label("eggs", 50) == "1 pieza"
+    assert portion_label("turkey_ham", 60) == "2 rebanadas"
+    assert portion_label("banana", 120) == "1 pieza"
+    assert portion_label("olive_oil", 14) == "1 cucharada"
+    assert portion_label("peanut_butter", 32) == "2 cucharadas"
+    assert portion_label("whey_isolate", 30) == "1 medida"
+    assert portion_label("almonds", 28) == "1 puño"
+    assert portion_label("whey_isolate", 45) == "1.5 medidas"
+
+
+def test_portion_label_blank_for_gram_foods():
+    # rice/tuna/honey are intentionally shown in grams, not pieces/cans
+    assert portion_label("rice", 80) == ""
+    assert portion_label("tuna", 90) == ""
+    assert portion_label("honey", 20) == ""
+
+
+def test_portion_label_blank_when_below_half_unit():
+    # a 20 g sliver of avocado must NOT read as "0.5 piezas"
+    assert portion_label("avocado", 20) == ""
 
 
 def test_generated_meal_carries_recipe_name_and_prep_note():

@@ -43,15 +43,20 @@ class SavedMeal(OwnedMixin, TimestampedModel):
 
     @property
     def items(self) -> list[dict]:
-        """Foods with their Spanish label attached, for templates."""
-        from gymapp.services.nutrition import food_label
+        """Foods with their Spanish label + household portion attached."""
+        from gymapp.services.nutrition import food_label, portion_label
 
         out = []
         for it in self.foods:
             if isinstance(it, str):  # legacy rows stored bare slugs
-                out.append({"slug": it, "label": food_label(it), "grams": None})
+                out.append({"slug": it, "label": food_label(it), "grams": None, "portion": ""})
             else:
-                out.append({**it, "label": food_label(it.get("slug", ""))})
+                slug = it.get("slug", "")
+                out.append({
+                    **it,
+                    "label": food_label(slug),
+                    "portion": portion_label(slug, it.get("grams")),
+                })
         return out
 
 

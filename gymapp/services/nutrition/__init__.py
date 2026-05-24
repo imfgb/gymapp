@@ -333,13 +333,143 @@ _N_OATS = "Cocina la avena con agua o leche."
 _N_EGGS = "Al gusto: revueltos, estrellados u omelette."
 _N_GRILL = "A la plancha o al horno."
 
-# Curated, REAL recipes — each is an actual dish (a shake, a plate of eggs, a
-# Mexican antojito, a grilled plate), not a random pile of foods. Ingredients are
-# `(slug, role)`: protein/carb/fat are sized to hit that share of the slot's
-# macros; veg is a fixed serving. The dish NAME and prep NOTE are shown to the
-# user so it reads like a recipe. Coherence is curated by hand; variety comes
-# from having many recipes per slot, filtered by the user's liked foods.
-MEAL_TEMPLATES: list[MealTemplate] = [
+# Recipe shells: a real dish FAMILY (a shake, a grilled plate, tacos, a bowl…)
+# whose components are interchangeable WITHIN culinary bounds. Expanding a shell
+# yields many recipes that are still real named dishes with a prep note — e.g.
+# "{protein} a la plancha con {carb} y {veg}" → "Pollo a la plancha con arroz y
+# brócoli". This gives hundreds of coherent meals without listing each by hand;
+# the dish NAME + prep NOTE are shown to the user so it reads like a recipe, not
+# a pile of foods. Sweet shells never use savory meats and savory shells never
+# use sweet fats, so no incoherent combos.
+@dataclass(frozen=True)
+class _Shell:
+    name: str  # format template; {protein}/{carb}/{fat}/{veg} → food labels
+    slots: tuple[str, ...]
+    note: str
+    proteins: tuple[str, ...] = ()
+    carbs: tuple[str, ...] = ()
+    fats: tuple[str, ...] = ()
+    vegs: tuple[str, ...] = ()
+    fixed: tuple[tuple[str, str], ...] = ()  # ingredients always present
+
+
+def _format_recipe_name(template: str, **slugs: str) -> str:
+    labels = {role: food_label(slug).lower() for role, slug in slugs.items()}
+    name = template.format(**labels)
+    return name[:1].upper() + name[1:]
+
+
+def _expand_shells(shells: list[_Shell]) -> list[MealTemplate]:
+    out: list[MealTemplate] = []
+    for sh in shells:
+        for p in sh.proteins or (None,):
+            for c in sh.carbs or (None,):
+                for f in sh.fats or (None,):
+                    for v in sh.vegs or (None,):
+                        ing = list(sh.fixed)
+                        slugs: dict[str, str] = {}
+                        if p:
+                            ing.append((p, "protein"))
+                            slugs["protein"] = p
+                        if c:
+                            ing.append((c, "carb"))
+                            slugs["carb"] = c
+                        if f:
+                            ing.append((f, "fat"))
+                            slugs["fat"] = f
+                        if v:
+                            ing.append((v, "veg"))
+                            slugs["veg"] = v
+                        out.append(
+                            MealTemplate(
+                                _format_recipe_name(sh.name, **slugs),
+                                sh.slots,
+                                tuple(ing),
+                                note=sh.note,
+                            )
+                        )
+    return out
+
+
+_SHELLS: list[_Shell] = [
+    # ---------- Desayuno/snack: licuados ----------
+    _Shell("Licuado de proteína con {carb} y {fat}", _AM, _N_SHAKE,
+           proteins=("whey_isolate", "whey_concentrate", "casein"),
+           carbs=("banana", "oats", "granola"),
+           fats=("peanut_butter", "almond_butter", "almonds", "nuts")),
+    _Shell("Licuado de proteína con {carb}", _AM, _N_SHAKE,
+           proteins=("whey_isolate", "whey_concentrate", "casein"),
+           carbs=("banana", "oats")),
+    # ---------- Desayuno/snack: avena ----------
+    _Shell("Avena con proteína y {fat}", _AM, _N_OATS,
+           proteins=("whey_isolate", "whey_concentrate", "casein"),
+           fats=("peanut_butter", "almond_butter", "almonds", "nuts"),
+           fixed=(("oats", "carb"),)),
+    _Shell("Avena con proteína y plátano", _AM, _N_OATS,
+           proteins=("whey_isolate", "whey_concentrate", "casein"),
+           fixed=(("oats", "carb"), ("banana", "carb"))),
+    # ---------- Desayuno/snack: yogur ----------
+    _Shell("Yogur griego con {carb} y {fat}", _AM, "",
+           carbs=("granola", "banana", "oats", "honey"),
+           fats=("almonds", "nuts", "peanut_butter", "almond_butter"),
+           fixed=(("greek_yogurt", "protein"),)),
+    # ---------- Desayuno: huevos ----------
+    _Shell("Huevos con {carb} y {veg}", _B, _N_EGGS,
+           proteins=("eggs", "egg_whites"),
+           carbs=("tortilla", "whole_wheat_bread", "beans", "potato"),
+           vegs=("tomato", "spinach", "onion", "mushroom", "nopal", "pepper")),
+    # ---------- Comida/cena: a la plancha ----------
+    _Shell("{protein} a la plancha con {carb} y {veg}", _PM, _N_GRILL,
+           proteins=("chicken", "lean_beef", "beef", "pork", "turkey", "fish",
+                     "salmon", "tuna", "shrimp"),
+           carbs=("rice", "brown_rice", "potato", "sweet_potato", "quinoa"),
+           vegs=("broccoli", "spinach", "asparagus", "green_beans", "zucchini",
+                 "pepper", "carrot", "mushroom")),
+    # ---------- Comida/cena: al horno ----------
+    _Shell("{protein} al horno con {carb} y {veg}", _PM, _N_GRILL,
+           proteins=("chicken", "salmon", "fish", "pork", "shrimp"),
+           carbs=("sweet_potato", "potato", "rice"),
+           vegs=("asparagus", "green_beans", "broccoli", "carrot")),
+    # ---------- Comida/cena: bowl ----------
+    _Shell("Bowl de {protein} con {carb} y {veg}", _PM, "",
+           proteins=("chicken", "lean_beef", "salmon", "shrimp", "tofu", "tuna"),
+           carbs=("rice", "brown_rice", "quinoa"),
+           vegs=("broccoli", "spinach", "pepper", "zucchini", "asparagus",
+                 "mushroom", "green_beans")),
+    # ---------- Comida/cena: salteado ----------
+    _Shell("Salteado de {protein} con {carb} y {veg}", _PM, "",
+           proteins=("chicken", "beef", "tofu", "shrimp"),
+           carbs=("rice", "brown_rice"),
+           vegs=("broccoli", "pepper", "mushroom", "zucchini", "green_beans",
+                 "asparagus", "carrot", "onion")),
+    # ---------- Comida/cena: tacos ----------
+    _Shell("Tacos de {protein} con {veg}", _PM, "",
+           proteins=("chicken", "lean_beef", "fish", "shrimp", "pork"),
+           vegs=("onion", "pepper", "nopal", "lettuce", "tomato"),
+           fixed=(("tortilla", "carb"),)),
+    # ---------- Comida/cena: pasta ----------
+    _Shell("Pasta con {protein} y {veg}", _PM, "",
+           proteins=("chicken", "ground_beef", "tuna", "shrimp", "sardines"),
+           vegs=("tomato", "mushroom", "zucchini", "spinach"),
+           fixed=(("pasta", "carb"),)),
+    # ---------- Comida/cena: ensalada ----------
+    _Shell("Ensalada de {protein} con {carb}", _PM, "",
+           proteins=("chicken", "tuna", "shrimp"),
+           carbs=("chickpeas", "quinoa", "beans"),
+           fixed=(("lettuce", "veg"),)),
+    # ---------- Snacks ----------
+    _Shell("Yogur griego con {fat}", _S, "",
+           fats=("almonds", "nuts", "peanut_butter", "almond_butter"),
+           fixed=(("greek_yogurt", "protein"),)),
+    _Shell("Atún con {carb}", _S, "",
+           proteins=("tuna",),
+           carbs=("rice_cakes", "whole_wheat_bread")),
+]
+
+
+# Iconic explicit dishes layered on top of the generated families (antojitos and
+# named plates that deserve their own name + prep).
+_SPECIALS: list[MealTemplate] = [
     # ---------- Desayunos: licuados / batidos ----------
     MealTemplate("Licuado de proteína, plátano y avena", _AM,
                  (("whey_isolate", "protein"), ("banana", "carb"), ("oats", "carb")),
@@ -496,6 +626,8 @@ MEAL_TEMPLATES: list[MealTemplate] = [
     MealTemplate("Curry de tofu con arroz integral", _PM,
                  (("tofu", "protein"), ("brown_rice", "carb"), ("pepper", "veg"))),
 ]
+
+MEAL_TEMPLATES: list[MealTemplate] = _expand_shells(_SHELLS) + _SPECIALS
 
 
 def eligible_templates(slot_key: str, preferences) -> list[MealTemplate]:

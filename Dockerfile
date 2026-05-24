@@ -43,5 +43,7 @@ USER app
 ENV PORT=8000
 EXPOSE 8000
 
-# Release-style migrations run via Procfile; the container itself just runs gunicorn.
-CMD ["sh", "-c", "gunicorn config.wsgi --bind 0.0.0.0:${PORT} --workers 2 --timeout 30 --access-logfile -"]
+# On Railway the railway.json startCommand drives the container; this CMD mirrors
+# it so the image behaves the same if run directly: migrate, optionally bootstrap
+# a superuser from DJANGO_SUPERUSER_* env vars, then serve.
+CMD ["sh", "-c", "python manage.py migrate --noinput && (python manage.py createsuperuser --noinput || true) && gunicorn config.wsgi --bind 0.0.0.0:${PORT} --workers 2 --timeout 30 --access-logfile -"]

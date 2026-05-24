@@ -232,9 +232,10 @@ Operating rules live in `.claude/AGENTS.md`. Per-feature success criteria in `.c
 
 Railway, Dockerfile-based. GitHub→main auto-deploys.
 
-- Release phase (`Procfile`): `python manage.py migrate --noinput`.
-- Web phase: `gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 2 --timeout 30`.
-- Required env vars in Railway: `DJANGO_SETTINGS_MODULE=config.settings.prod`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `SENTRY_DSN` (optional), `DJANGO_CSRF_TRUSTED_ORIGINS` (when adding a custom domain). `DATABASE_URL` is auto-injected.
+- Start command (`railway.json` + Dockerfile CMD): `migrate --noinput && (createsuperuser --noinput || true) && gunicorn …`. Migrations run on every boot (idempotent); the superuser is bootstrapped from `DJANGO_SUPERUSER_*` env vars and the `|| true` keeps boots after the first from failing on "already exists".
+- Healthcheck: `healthcheckPath=/auth/login/`, `healthcheckTimeout=60`.
+- **Railway hosts are auto-trusted** (prod.py): `ALLOWED_HOSTS` includes `.railway.app` and `CSRF_TRUSTED_ORIGINS` includes `https://*.railway.app`. This is required — Railway's deploy healthcheck calls the app with `Host: healthcheck.railway.app`, so a missing/narrow `ALLOWED_HOSTS` makes Django answer 400 and the healthcheck (and deploy) fail. **This was the 2026-05-25 deploy failure** ("Network › Healthcheck → Healthcheck failure"): build+deploy passed, healthcheck 400'd because `DJANGO_ALLOWED_HOSTS` wasn't set.
+- Required env vars in Railway: `DJANGO_SECRET_KEY`, plus a Postgres service providing `DATABASE_URL` (add the Postgres plugin and reference `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the web service — it is NOT auto-injected across services). Optional: `DJANGO_SUPERUSER_EMAIL` + `DJANGO_SUPERUSER_PASSWORD` (auto-creates the admin), `SENTRY_DSN`, `DJANGO_ALLOWED_HOSTS`/`DJANGO_CSRF_TRUSTED_ORIGINS` (custom domain). `DJANGO_SETTINGS_MODULE=config.settings.prod` is baked into the Dockerfile. The service must have a generated public domain (Settings → Networking) to be reachable. Free trial ($5/30 days) covers a web + Postgres for several days.
 
 Full runbook + Phase 0 verification checklist → `DEPLOYMENT.md`.
 

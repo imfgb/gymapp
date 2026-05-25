@@ -43,8 +43,7 @@ USER app
 ENV PORT=8000
 EXPOSE 8000
 
-# On Railway the railway.json startCommand drives the container; this CMD mirrors
-# it. gunicorn starts immediately (so the healthcheck passes without racing
-# Railway's private networking, which takes a few seconds to reach Postgres);
-# migrate + superuser bootstrap run in the background once the DB is reachable.
-CMD ["sh", "-c", "(python manage.py migrate --noinput && python manage.py createsuperuser --noinput </dev/null 2>&1 || true) & exec gunicorn config.wsgi --bind 0.0.0.0:${PORT} --workers 2 --timeout 30 --access-logfile -"]
+# Start logic lives in start.sh (gunicorn now, DB setup in the background). The
+# railway.json startCommand also calls `sh start.sh`; this mirrors it so the image
+# behaves the same if run directly.
+CMD ["sh", "start.sh"]

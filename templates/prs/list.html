@@ -19,26 +19,28 @@
             {{ exercise.name }}
           </a>
         </h2>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="text-xs uppercase text-slate-500">
             <tr>
-              <th class="px-4 py-1 text-left">Reps</th>
-              <th class="px-4 py-1 text-left">Peso</th>
-              <th class="px-4 py-1 text-left">Fecha</th>
-              <th class="px-4 py-1 text-left">Origen</th>
+              <th class="whitespace-nowrap px-4 py-1 text-left">Reps</th>
+              <th class="whitespace-nowrap px-4 py-1 text-left">Peso</th>
+              <th class="whitespace-nowrap px-4 py-1 text-left">Fecha</th>
+              <th class="whitespace-nowrap px-4 py-1 text-left">Origen</th>
             </tr>
           </thead>
           <tbody>
             {% for pr in prs %}
               <tr class="border-t border-slate-100">
                 <td class="px-4 py-1 tabular-nums">{{ pr.reps }}</td>
-                <td class="px-4 py-1 tabular-nums">{{ pr.weight_kg }} kg</td>
-                <td class="px-4 py-1 text-slate-500">{{ pr.achieved_at|date:"d M Y" }}</td>
-                <td class="px-4 py-1 text-xs text-slate-500">{{ pr.get_source_display }}</td>
+                <td class="whitespace-nowrap px-4 py-1 tabular-nums">{{ pr.weight_kg }} kg</td>
+                <td class="whitespace-nowrap px-4 py-1 text-slate-500">{{ pr.achieved_at|date:"d M Y" }}</td>
+                <td class="whitespace-nowrap px-4 py-1 text-xs text-slate-500">{{ pr.get_source_display }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
+        </div>
       </section>
     {% endfor %}
   </div>

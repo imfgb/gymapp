@@ -16,12 +16,13 @@
   </div>
 </header>
 
-<table class="w-full overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
+<div class="overflow-x-auto rounded-lg border border-slate-200">
+<table class="w-full bg-white text-sm">
   <thead class="bg-slate-50 text-xs uppercase text-slate-500">
     <tr>
-      <th class="px-4 py-2 text-left">Fecha</th>
-      <th class="px-4 py-2 text-left">Peso</th>
-      <th class="px-4 py-2 text-left">% grasa</th>
+      <th class="whitespace-nowrap px-4 py-2 text-left">Fecha</th>
+      <th class="whitespace-nowrap px-4 py-2 text-left">Peso</th>
+      <th class="whitespace-nowrap px-4 py-2 text-left">% grasa</th>
       <th class="px-4 py-2 text-left">Notas</th>
       <th class="px-4 py-2 text-right"></th>
     </tr>
@@ -29,9 +30,9 @@
   <tbody>
     {% for snap in snapshots %}
       <tr class="border-t border-slate-100">
-        <td class="px-4 py-2 text-slate-500">{{ snap.measured_at|date:"d M Y H:i" }}</td>
-        <td class="px-4 py-2 tabular-nums font-medium">{{ snap.weight_kg }} kg</td>
-        <td class="px-4 py-2 tabular-nums">
+        <td class="whitespace-nowrap px-4 py-2 text-slate-500">{{ snap.measured_at|date:"d M Y H:i" }}</td>
+        <td class="whitespace-nowrap px-4 py-2 tabular-nums font-medium">{{ snap.weight_kg }} kg</td>
+        <td class="whitespace-nowrap px-4 py-2 tabular-nums">
           {% if snap.body_fat_pct is not None %}{{ snap.body_fat_pct }} %{% else %}—{% endif %}
         </td>
         <td class="px-4 py-2 text-slate-500">{{ snap.notes|default:"—" }}</td>
@@ -48,4 +49,5 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endblock %}

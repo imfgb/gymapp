@@ -1,12 +1,12 @@
 <article id="elog-{{ elog.id }}"
          class="rounded-lg border border-slate-200 bg-white shadow-sm">
-  <header class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3">
-    <div>
-      <h2 class="text-lg font-medium">{{ elog.exercise.name }}</h2>
+  <header class="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between">
+    <div class="min-w-0">
+      <h2 class="text-lg font-medium break-words">{{ elog.exercise.name }}</h2>
       <span class="text-xs text-slate-500">{{ elog.exercise.equipment.name }}</span>
     </div>
-    <div class="flex gap-2">
-      {% if session.is_active %}
+    {% if session.is_active %}
+      <div class="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
         <button type="button"
                 hx-post="{% url 'workouts:add_set' session.id elog.id %}"
                 hx-target="#elog-{{ elog.id }}"
@@ -37,8 +37,8 @@
                 class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
           Borrar
         </button>
-      {% endif %}
-    </div>
+      </div>
+    {% endif %}
   </header>
 
   <div id="swap-{{ elog.id }}"></div>

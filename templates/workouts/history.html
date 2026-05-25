@@ -30,8 +30,8 @@
 
 <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
   {% for s in sessions %}
-    <li class="flex items-center justify-between px-4 py-3 {% if s.is_active %}bg-amber-50/50{% endif %}">
-      <div>
+    <li class="flex items-center justify-between gap-3 px-4 py-3 {% if s.is_active %}bg-amber-50/50{% endif %}">
+      <div class="min-w-0">
         <a class="font-medium hover:underline" href="{% url 'workouts:session' s.id %}">
           {% if s.source_routine_day %}{{ s.source_routine_day.label }}{% else %}Entrenamiento libre{% endif %}
         </a>
@@ -40,7 +40,7 @@
           {% if s.finished_at %} · {{ s.finished_at|timeuntil:s.started_at }}{% endif %}
         </p>
       </div>
-      <span class="text-xs uppercase tracking-wide {% if s.is_active %}font-semibold text-amber-600{% else %}text-slate-500{% endif %}">
+      <span class="shrink-0 text-xs uppercase tracking-wide {% if s.is_active %}font-semibold text-amber-600{% else %}text-slate-500{% endif %}">
         {{ s.get_status_display }}
       </span>
     </li>

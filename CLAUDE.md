@@ -230,12 +230,16 @@ Operating rules live in `.claude/AGENTS.md`. Per-feature success criteria in `.c
 
 ## 12. Deployment
 
-Railway, Dockerfile-based. GitHub→main auto-deploys.
+Railway, Dockerfile-based. GitHub→main auto-deploys. **LIVE since 2026-05-25 at https://gymapp-production-1029.up.railway.app** (free trial credit, not paying).
 
-- Start command (`railway.json` + Dockerfile CMD): `migrate --noinput && (createsuperuser --noinput || true) && gunicorn …`. Migrations run on every boot (idempotent); the superuser is bootstrapped from `DJANGO_SUPERUSER_*` env vars and the `|| true` keeps boots after the first from failing on "already exists".
-- Healthcheck: `healthcheckPath=/auth/login/`, `healthcheckTimeout=60`.
-- **Railway hosts are auto-trusted** (prod.py): `ALLOWED_HOSTS` includes `.railway.app` and `CSRF_TRUSTED_ORIGINS` includes `https://*.railway.app`. This is required — Railway's deploy healthcheck calls the app with `Host: healthcheck.railway.app`, so a missing/narrow `ALLOWED_HOSTS` makes Django answer 400 and the healthcheck (and deploy) fail. **This was the 2026-05-25 deploy failure** ("Network › Healthcheck → Healthcheck failure"): build+deploy passed, healthcheck 400'd because `DJANGO_ALLOWED_HOSTS` wasn't set.
-- Required env vars in Railway: `DJANGO_SECRET_KEY`, plus a Postgres service providing `DATABASE_URL` (add the Postgres plugin and reference `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the web service — it is NOT auto-injected across services). Optional: `DJANGO_SUPERUSER_EMAIL` + `DJANGO_SUPERUSER_PASSWORD` (auto-creates the admin), `SENTRY_DSN`, `DJANGO_ALLOWED_HOSTS`/`DJANGO_CSRF_TRUSTED_ORIGINS` (custom domain). `DJANGO_SETTINGS_MODULE=config.settings.prod` is baked into the Dockerfile. The service must have a generated public domain (Settings → Networking) to be reachable. Free trial ($5/30 days) covers a web + Postgres for several days.
+- **Start command = `sh start.sh`** (in `railway.json` and Dockerfile `CMD`). `start.sh` starts **gunicorn immediately** and runs **`migrate` + `createsuperuser` (from `DJANGO_SUPERUSER_*`) in the BACKGROUND**. Three hard-won reasons (the 2026-05-25 deploy saga):
+  1. **Healthcheck 400** — Railway's healthcheck hits the app with `Host: healthcheck.railway.app`, so `ALLOWED_HOSTS` MUST include `.railway.app` and `CSRF_TRUSTED_ORIGINS` `https://*.railway.app` (done in `prod.py`). Otherwise Django answers 400 → healthcheck fails.
+  2. **`migrate` hung at boot** — connecting to Postgres before Railway's **private network** (`*.railway.internal`, IPv6) is ready, so gunicorn never started → healthcheck failed. Fix: gunicorn first, DB setup backgrounded.
+  3. **"Failed to parse start command"** — Railway's startCommand parser rejects shell `&`, `()`, `<`. So the background logic lives in `start.sh`, invoked as the parser-safe `sh start.sh`.
+- Healthcheck: `healthcheckPath=/auth/login/` (a GET that needs no DB → passes the moment gunicorn is up), `healthcheckTimeout=60`.
+- **Triggering a deploy:** GitHub push *should* auto-deploy but was flaky/laggy. Reliable manual trigger: gymapp → Variables → add/delete any variable → "Apply change → **Deploy**" (builds the **latest** commit). Do NOT use "Redeploy" — it re-runs the SAME (often old) commit.
+- Required env on the gymapp service: `DJANGO_SECRET_KEY`, and a Postgres service with `DATABASE_URL=${{Postgres.DATABASE_URL}}` referenced on gymapp (NOT auto-injected across services). Set `DJANGO_SUPERUSER_EMAIL` + `DJANGO_SUPERUSER_PASSWORD` to auto-create the admin. `DJANGO_SETTINGS_MODULE=config.settings.prod` is baked in the Dockerfile. Generate a public domain (Settings → Networking) to be reachable.
+- **Adding users (invite-only):** `/admin/` → Users → Add user (email+password); Profile auto-creates via the post_save signal; leave is_staff/is_superuser OFF. `OwnerScopedAdmin` shows the superuser ALL users' data in `/admin/`, while each normal user sees only their own in the app.
 
 Full runbook + Phase 0 verification checklist → `DEPLOYMENT.md`.
 

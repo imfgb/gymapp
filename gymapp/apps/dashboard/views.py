@@ -24,6 +24,7 @@ from gymapp.services.analytics import (
     weekly_volume,
 )
 from gymapp.services.coaching.blocks import block_status
+from gymapp.services.fatigue import daily_advice
 from gymapp.services.goals import current_goal, monthly_goal_progress
 
 
@@ -134,6 +135,7 @@ def home(request):
     goal_progress = monthly_goal_progress(goal) if goal else []
 
     deload = deload_recommendation(request.user, today=today)
+    advice = daily_advice(request.user, today=today)
 
     block = TrainingBlock.objects.for_user(request.user).order_by("-started_on").first()
     block_state = (
@@ -145,6 +147,7 @@ def home(request):
         "dashboard/home.html",
         {
             "deload": deload,
+            "advice": advice,
             "block_state": block_state,
             "today_routine_day": today_entry["routine_day"],
             "today_skipped": today_entry["is_skipped"],

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Recuperación · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">Recuperación</h1>
+  <p class="text-sm text-slate-500">Fatiga por músculo + cómo amaneciste hoy</p>
+</header>
+
+{# ============ HOY'S ADVICE ============ #}
+<section class="mb-6 rounded-lg border p-5
+                {% if advice.color == 'rose' %}border-rose-300 bg-rose-50
+                {% elif advice.color == 'amber' %}border-amber-300 bg-amber-50
+                {% elif advice.color == 'emerald' %}border-emerald-300 bg-emerald-50
+                {% else %}border-slate-200 bg-white{% endif %}">
+  <p class="text-xs uppercase tracking-wide text-slate-500">Hoy</p>
+  <p class="mt-1 text-2xl font-bold
+            {% if advice.color == 'rose' %}text-rose-800
+            {% elif advice.color == 'amber' %}text-amber-800
+            {% elif advice.color == 'emerald' %}text-emerald-800
+            {% else %}text-slate-700{% endif %}">{{ advice.label }}</p>
+  <p class="mt-1 text-sm text-slate-700">{{ advice.reason }}</p>
+  {% if advice.readiness is not None %}
+    <p class="mt-1 text-xs text-slate-500">
+      Readiness: <span class="font-semibold tabular-nums">{{ advice.readiness|floatformat:1 }}</span>/5
+      · Fatiga promedio en músculos de hoy: <span class="font-semibold tabular-nums">{{ advice.avg_fatigue|floatformat:1 }}</span>
+    </p>
+  {% endif %}
+</section>
+
+{# ============ DAILY CHECK-IN ============ #}
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="text-sm uppercase tracking-wide text-slate-500">¿Cómo amaneciste?</h2>
+    {% if today_snap %}
+      <span class="text-xs text-emerald-700">✓ Registrado a las {{ today_snap.updated_at|date:"H:i" }}</span>
+    {% endif %}
+  </div>
+  <form method="post" action="{% url 'metrics:readiness_checkin' %}" class="space-y-4">
+    {% csrf_token %}
+
+    {# Sleep: 1=fatal, 5=excelente #}
+    <fieldset>
+      <legend class="text-sm font-medium text-slate-700">Sueño</legend>
+      <p class="mb-1 text-xs text-slate-500">1 fatal · 5 excelente</p>
+      <div class="flex gap-2">
+        {% for n in "12345" %}
+          <label class="flex-1">
+            <input type="radio" name="sleep_quality" value="{{ n }}" class="peer sr-only"
+                   {% if today_snap and today_snap.sleep_quality|stringformat:"s" == n %}checked{% endif %}>
+            <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    {# Stress: 1=cero, 5=mucho #}
+    <fieldset>
+      <legend class="text-sm font-medium text-slate-700">Estrés</legend>
+      <p class="mb-1 text-xs text-slate-500">1 cero · 5 mucho</p>
+      <div class="flex gap-2">
+        {% for n in "12345" %}
+          <label class="flex-1">
+            <input type="radio" name="stress_level" value="{{ n }}" class="peer sr-only"
+                   {% if today_snap and today_snap.stress_level|stringformat:"s" == n %}checked{% endif %}>
+            <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    {# Soreness: 1=ninguna, 5=muy adolorido #}
+    <fieldset>
+      <legend class="text-sm font-medium text-slate-700">Adolorido</legend>
+      <p class="mb-1 text-xs text-slate-500">1 ninguno · 5 muy adolorido</p>
+      <div class="flex gap-2">
+        {% for n in "12345" %}
+          <label class="flex-1">
+            <input type="radio" name="soreness_overall" value="{{ n }}" class="peer sr-only"
+                   {% if today_snap and today_snap.soreness_overall|stringformat:"s" == n %}checked{% endif %}>
+            <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+      {% if today_snap %}Actualizar{% else %}Guardar{% endif %}
+    </button>
+  </form>
+</section>
+
+{# ============ PER-MUSCLE FATIGUE ============ #}
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-1 text-sm uppercase tracking-wide text-slate-500">Fatiga por músculo</h2>
+  <p class="mb-3 text-xs text-slate-400">Series recientes con decaimiento (más reciente pesa más). Ajustes manuales con +/-.</p>
+  {% if table %}
+    <ul class="space-y-2">
+      {% for row in table %}
+        <li class="flex items-center gap-3">
+          <span class="w-28 shrink-0 text-sm text-slate-700">{{ row.label }}</span>
+          <div class="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div class="h-full rounded-full
+                        {% if row.score >= 12 %}bg-rose-500
+                        {% elif row.score >= 6 %}bg-amber-500
+                        {% else %}bg-emerald-500{% endif %}"
+                 style="width: {{ row.pct }}%"></div>
+          </div>
+          <span class="w-16 shrink-0 text-right text-xs tabular-nums text-slate-600">{{ row.score }}</span>
+          <span class="flex shrink-0 gap-1">
+            <form method="post" action="{% url 'metrics:fatigue_adjust' row.muscle %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="delta" value="-1">
+              <button title="Me siento más fresco" class="rounded border border-slate-300 px-1.5 text-xs hover:bg-slate-50">−</button>
+            </form>
+            <form method="post" action="{% url 'metrics:fatigue_adjust' row.muscle %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="delta" value="1">
+              <button title="Más cansado de lo que cree el sistema" class="rounded border border-slate-300 px-1.5 text-xs hover:bg-slate-50">+</button>
+            </form>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-sm text-slate-500">Aún no hay entrenamientos en los últimos 14 días para calcular fatiga.</p>
+  {% endif %}
+</section>
+
+{# ============ RECENT READINESS ============ #}
+{% if recent_snaps %}
+<section class="rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Últimos 7 días</h2>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for s in recent_snaps %}
+      <li class="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
+        <span class="text-slate-700">{{ s.date|date:"l d M"|capfirst }}</span>
+        <span class="tabular-nums text-xs text-slate-500">
+          Sueño {{ s.sleep_quality }} · Estrés {{ s.stress_level }} · Adolorido {{ s.soreness_overall }} · Readiness <span class="font-semibold">{{ s.readiness_score|floatformat:1 }}</span>
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

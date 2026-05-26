@@ -53,6 +53,36 @@ def test_assign_weekly_split_noop_without_days(alice):
     assert WeeklySplit.objects.filter(owner=alice).count() == 0
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize("n_days", [1, 2, 3, 4, 5, 6, 7])
+def test_assign_weekly_split_every_size(alice, n_days):
+    """Each supported routine size lands on the documented WEEKDAY_PATTERN —
+    so the dashboard 'Hoy' lights up on the expected weekdays."""
+    r = Routine.objects.create(owner=alice, name=f"R{n_days}")
+    days = [RoutineDay.objects.create(routine=r, label=f"D{i}", ordering=i) for i in range(n_days)]
+    assign_weekly_split(alice, r)
+    assigned = {
+        w.weekday: w.routine_day_id
+        for w in WeeklySplit.objects.filter(owner=alice)
+        if w.routine_day_id is not None
+    }
+    expected = dict(zip(WEEKDAY_PATTERNS[n_days], [d.id for d in days], strict=True))
+    assert assigned == expected
+    # The other weekdays must exist as explicit rest rows so the editor renders
+    # the right empty selects.
+    assert WeeklySplit.objects.filter(owner=alice).count() == 7
+
+
+@pytest.mark.django_db
+def test_assign_weekly_split_caps_oversized_routine(alice):
+    """A routine with more than 7 days uses the first 7, one per weekday."""
+    r = Routine.objects.create(owner=alice, name="Mega")
+    days = [RoutineDay.objects.create(routine=r, label=f"D{i}", ordering=i) for i in range(10)]
+    assign_weekly_split(alice, r)
+    for wd in range(7):
+        assert WeeklySplit.objects.get(owner=alice, weekday=wd).routine_day_id == days[wd].id
+
+
 def test_rep_scheme_per_style():
     assert _rep_scheme("powerlifting", compound=True) == (5, 3, 5)
     assert _rep_scheme("bodybuilding", compound=True) == (4, 8, 12)

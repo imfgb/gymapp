@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import pytest
 
-from gymapp.apps.routines.models import Routine, RoutineDay
+from gymapp.apps.routines.models import Routine, RoutineDay, WeeklySplit
 from gymapp.services.routine_generator import (
     PRESET_LABELS,
     PRESETS,
+    WEEKDAY_PATTERNS,
     DayPlan,
     SplitPreset,
     _rep_scheme,
+    assign_weekly_split,
     generate_routine,
     preview_routine,
 )
@@ -27,6 +29,28 @@ from tests.factories import UserFactory
 @pytest.fixture
 def alice(db):
     return UserFactory(email="alice@example.com")
+
+
+@pytest.mark.django_db
+def test_assign_weekly_split_distributes_and_clears(alice):
+    r = Routine.objects.create(owner=alice, name="R")
+    days = [RoutineDay.objects.create(routine=r, label=f"D{i}", ordering=i) for i in range(3)]
+    # Pre-existing assignment that should be cleared on reschedule.
+    WeeklySplit.objects.create(owner=alice, weekday=6, routine_day=days[0])
+
+    assign_weekly_split(alice, r)
+
+    expected = dict(zip(WEEKDAY_PATTERNS[3], days, strict=True))  # Mon/Wed/Fri
+    for wd in range(7):
+        split = WeeklySplit.objects.get(owner=alice, weekday=wd)
+        assert split.routine_day_id == (expected[wd].id if wd in expected else None)
+
+
+@pytest.mark.django_db
+def test_assign_weekly_split_noop_without_days(alice):
+    r = Routine.objects.create(owner=alice, name="Empty")
+    assign_weekly_split(alice, r)
+    assert WeeklySplit.objects.filter(owner=alice).count() == 0
 
 
 def test_rep_scheme_per_style():

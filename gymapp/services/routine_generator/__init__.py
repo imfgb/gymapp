@@ -176,6 +176,48 @@ def generate_routine(
     return routine
 
 
+# How to spread N training days across a Monday-anchored week, leaving the
+# remaining days as rest. Chosen so rest falls between sessions where it helps
+# (e.g. 3 days -> Mon/Wed/Fri, 4 -> Mon/Tue/Thu/Fri). The user can rearrange in
+# the weekly-split editor afterwards.
+WEEKDAY_PATTERNS: dict[int, list[int]] = {
+    1: [0],
+    2: [0, 3],
+    3: [0, 2, 4],
+    4: [0, 1, 3, 4],
+    5: [0, 1, 2, 3, 4],
+    6: [0, 1, 2, 3, 4, 5],
+    7: [0, 1, 2, 3, 4, 5, 6],
+}
+
+
+def assign_weekly_split(owner, routine) -> None:
+    """Schedule a routine's days onto the week and persist the WeeklySplit.
+
+    Writes all 7 weekdays for the owner: each training day gets one of the
+    routine's days (in order), the rest become rest days. This replaces the
+    user's current schedule, which is what they expect after generating or
+    explicitly programming a routine into their week.
+    """
+    from gymapp.apps.routines.models import WeeklySplit
+
+    days = list(routine.days.order_by("ordering"))
+    if not days:
+        return
+    pattern = WEEKDAY_PATTERNS.get(len(days))
+    if pattern is None:
+        # More days than fit in a week: one per day, capped at 7.
+        pattern = list(range(7))
+        days = days[:7]
+    mapping = dict(zip(pattern, days, strict=False))
+    for weekday in range(7):
+        WeeklySplit.objects.update_or_create(
+            owner=owner,
+            weekday=weekday,
+            defaults={"routine_day": mapping.get(weekday)},
+        )
+
+
 def preview_routine(
     *,
     preset: SplitPreset,

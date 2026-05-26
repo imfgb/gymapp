@@ -41,7 +41,10 @@ urlpatterns = [
     ),
     # Weekly split
     path("split/", views.weekly_split, name="weekly_split"),
+    path("split/save/", views.weekly_split_save, name="weekly_split_save"),
     path("split/<int:weekday>/", views.weekly_split_assign, name="weekly_split_assign"),
+    # Program a whole routine into the week in one click
+    path("<int:routine_id>/apply-to-week/", views.apply_to_week, name="apply_to_week"),
     # "Hoy no iré al gym" toggle for today
     path("skip-today/", views.skip_today_toggle, name="skip_today"),
     # 6-week training block

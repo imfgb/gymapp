@@ -83,6 +83,32 @@
   {% endif %}
 </section>
 
+{# ============ TODAY'S READINESS / ADVICE ============ #}
+{% if advice.level != "rest" or advice.readiness is not None %}
+<section class="mb-6 rounded-lg border p-4
+                {% if advice.color == 'rose' %}border-rose-300 bg-rose-50
+                {% elif advice.color == 'amber' %}border-amber-300 bg-amber-50
+                {% elif advice.color == 'emerald' %}border-emerald-300 bg-emerald-50
+                {% else %}border-slate-200 bg-white{% endif %}">
+  <div class="flex items-baseline justify-between gap-2">
+    <p class="text-xs uppercase tracking-wide text-slate-500">Estado de hoy</p>
+    <a href="{% url 'metrics:recovery' %}" class="text-xs text-slate-500 hover:underline">Detalle →</a>
+  </div>
+  <p class="mt-1 text-lg font-semibold
+            {% if advice.color == 'rose' %}text-rose-800
+            {% elif advice.color == 'amber' %}text-amber-800
+            {% elif advice.color == 'emerald' %}text-emerald-800
+            {% else %}text-slate-700{% endif %}">{{ advice.label }}</p>
+  <p class="mt-0.5 text-sm text-slate-700">{{ advice.reason }}</p>
+  {% if advice.readiness is None %}
+    <p class="mt-2 text-xs text-slate-500">
+      <a href="{% url 'metrics:recovery' %}" class="underline">Registra tu sueño / estrés / dolor de hoy</a>
+      para una recomendación más precisa.
+    </p>
+  {% endif %}
+</section>
+{% endif %}
+
 {# ============ DELOAD ALERT ============ #}
 {% if deload.recommended %}
 <section class="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4">

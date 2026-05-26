@@ -47,6 +47,150 @@ def test_post_twice_updates_same_row(alice, client):
     client.post(url, {"target_sessions": "10"})
     client.post(url, {"target_sessions": "20"})
     assert MonthlyGoal.objects.filter(owner=alice).count() == 1
+
+
+# ---------- New body-comp + recovery views ----------
+
+
+@pytest.mark.django_db
+def test_snapshot_create_persists_new_body_comp_fields(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    client.force_login(alice)
+    resp = client.post(
+        reverse("metrics:create"),
+        {
+            "weight_kg": "80.0",
+            "body_fat_pct": "15.5",
+            "muscle_pct": "42.1",
+            "visceral_fat": "7.5",
+            "notes": "después de gym",
+        },
+    )
+    assert resp.status_code == 302
+    snap = UserMetricSnapshot.objects.get(owner=alice)
+    assert snap.muscle_pct == Decimal("42.1")
+    assert snap.visceral_fat == Decimal("7.5")
+
+
+@pytest.mark.django_db
+def test_metrics_list_renders_bmi_when_height_set(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    alice.profile.height_cm = 178
+    alice.profile.save()
+    UserMetricSnapshot.objects.create(owner=alice, weight_kg="80.0", measured_at=timezone.now())
+    client.force_login(alice)
+    resp = client.get(reverse("metrics:list"))
+    # 80 / 1.78^2 ≈ 25.2
+    assert b"25.2" in resp.content
+    assert b"BMI" in resp.content
+
+
+@pytest.mark.django_db
+def test_metrics_list_warns_when_height_missing(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    alice.profile.height_cm = None
+    alice.profile.save()
+    UserMetricSnapshot.objects.create(owner=alice, weight_kg="80.0", measured_at=timezone.now())
+    client.force_login(alice)
+    resp = client.get(reverse("metrics:list"))
+    assert "Para calcular tu BMI".encode() in resp.content
+
+
+@pytest.mark.django_db
+def test_recovery_page_renders(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("metrics:recovery"))
+    assert resp.status_code == 200
+    assert b"Recuperaci" in resp.content
+    assert "¿Cómo amaneciste?".encode() in resp.content
+
+
+@pytest.mark.django_db
+def test_readiness_checkin_upserts_today(alice, client):
+    from gymapp.apps.metrics.models import ReadinessSnapshot
+
+    client.force_login(alice)
+    resp = client.post(
+        reverse("metrics:readiness_checkin"),
+        {"sleep_quality": "4", "stress_level": "2", "soreness_overall": "3"},
+    )
+    assert resp.status_code == 302
+    snap = ReadinessSnapshot.objects.get(owner=alice, date=timezone.localdate())
+    assert snap.sleep_quality == 4
+    assert snap.stress_level == 2
+    assert snap.soreness_overall == 3
+
+    # Second POST overwrites instead of creating a duplicate row.
+    client.post(
+        reverse("metrics:readiness_checkin"),
+        {"sleep_quality": "5", "stress_level": "1", "soreness_overall": "1"},
+    )
+    assert ReadinessSnapshot.objects.filter(owner=alice, date=timezone.localdate()).count() == 1
+    snap.refresh_from_db()
+    assert snap.sleep_quality == 5
+
+
+@pytest.mark.django_db
+def test_readiness_checkin_clamps_out_of_range(alice, client):
+    from gymapp.apps.metrics.models import ReadinessSnapshot
+
+    client.force_login(alice)
+    client.post(
+        reverse("metrics:readiness_checkin"),
+        {"sleep_quality": "99", "stress_level": "-5", "soreness_overall": "abc"},
+    )
+    snap = ReadinessSnapshot.objects.get(owner=alice, date=timezone.localdate())
+    assert snap.sleep_quality == 5  # clamped up
+    assert snap.stress_level == 1  # clamped down
+    assert snap.soreness_overall == 3  # fallback
+
+
+@pytest.mark.django_db
+def test_fatigue_adjust_creates_and_stacks_and_clears(alice, client):
+    from gymapp.apps.metrics.models import FatigueAdjustment
+
+    client.force_login(alice)
+    url = reverse("metrics:fatigue_adjust", args=["chest"])
+    client.post(url, {"delta": "1"})
+    client.post(url, {"delta": "2"})
+    adj = FatigueAdjustment.objects.get(owner=alice, date=timezone.localdate(), muscle_slug="chest")
+    assert adj.delta == 3.0
+    # delta=0 removes the row (reset)
+    client.post(url, {"delta": "0"})
+    assert not FatigueAdjustment.objects.filter(
+        owner=alice, date=timezone.localdate(), muscle_slug="chest"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_dashboard_shows_advice_card(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:home"))
+    assert resp.status_code == 200
+    # No split + no readiness -> rest, card hidden. Add a readiness so it shows.
+    from gymapp.apps.metrics.models import ReadinessSnapshot
+
+    ReadinessSnapshot.objects.create(
+        owner=alice,
+        date=timezone.localdate(),
+        sleep_quality=5,
+        stress_level=1,
+        soreness_overall=1,
+    )
+    resp2 = client.get(reverse("dashboard:home"))
+    assert b"Estado de hoy" in resp2.content
+
+
+@pytest.mark.django_db
+def test_post_twice_overwrites_target(alice, client):
+    """Restored after the bulk edit: confirms update_or_create keeps one row."""
+    client.force_login(alice)
+    url = reverse("metrics:goals")
+    client.post(url, {"target_sessions": "10"})
+    client.post(url, {"target_sessions": "20"})
     assert MonthlyGoal.objects.get(owner=alice).target_sessions == 20
 
 

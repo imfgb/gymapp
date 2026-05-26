@@ -17,6 +17,16 @@ class UserMetricSnapshot(OwnedMixin, TimestampedModel):
     measured_at = models.DateTimeField(db_index=True)
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2)
     body_fat_pct = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    # Body-composition extras from smart scales — all optional (many users don't
+    # have a scale that reports these).
+    muscle_pct = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    visceral_fat = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Tanita/Omron visceral-fat rating (~1–30).",
+    )
     notes = models.CharField(max_length=200, blank=True)
 
     objects = OwnerScopedQuerySet.as_manager()
@@ -27,6 +37,76 @@ class UserMetricSnapshot(OwnedMixin, TimestampedModel):
     def __str__(self) -> str:
         bf = f" @ {self.body_fat_pct}%" if self.body_fat_pct is not None else ""
         return f"{self.weight_kg}kg{bf} ({self.measured_at:%Y-%m-%d})"
+
+    def bmi_for(self, height_cm: int | None) -> float | None:
+        """BMI = weight / height^2 (m). None if height isn't set."""
+        if not height_cm or height_cm <= 0:
+            return None
+        h_m = float(height_cm) / 100.0
+        return round(float(self.weight_kg) / (h_m * h_m), 1)
+
+
+class ReadinessSnapshot(OwnedMixin, TimestampedModel):
+    """One per (user, day): daily 1–5 self-report for sleep / stress / soreness.
+
+    Drives the day's training advice together with computed muscle fatigue.
+    Higher sleep_quality = better. Higher stress / soreness = worse.
+    """
+
+    date = models.DateField(db_index=True)
+    sleep_quality = models.PositiveSmallIntegerField(help_text="1 (terrible) – 5 (great)")
+    stress_level = models.PositiveSmallIntegerField(help_text="1 (low) – 5 (high)")
+    soreness_overall = models.PositiveSmallIntegerField(help_text="1 (none) – 5 (very sore)")
+    notes = models.CharField(max_length=200, blank=True, default="")
+
+    objects = OwnerScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "date"], name="readiness_unique_owner_date"),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(sleep_quality__gte=1, sleep_quality__lte=5)
+                    & models.Q(stress_level__gte=1, stress_level__lte=5)
+                    & models.Q(soreness_overall__gte=1, soreness_overall__lte=5)
+                ),
+                name="readiness_1_to_5",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Readiness {self.date} ({self.owner.email})"
+
+    @property
+    def readiness_score(self) -> float:
+        """Combined 1–5: sleep is good, stress + soreness are bad, average."""
+        return (self.sleep_quality + (6 - self.stress_level) + (6 - self.soreness_overall)) / 3.0
+
+
+class FatigueAdjustment(OwnedMixin, TimestampedModel):
+    """Manual +/- override stacked on top of the computed fatigue for one muscle
+    on one day. Lets the user say 'no, my chest is more cooked than the math
+    thinks' (positive delta) or 'I'm fresh, ignore yesterday' (negative)."""
+
+    date = models.DateField(db_index=True)
+    muscle_slug = models.CharField(max_length=40)
+    delta = models.FloatField(help_text="Sets-equivalent units; can be negative.")
+
+    objects = OwnerScopedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-date", "muscle_slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "date", "muscle_slug"],
+                name="fatigue_adjust_unique_owner_date_muscle",
+            )
+        ]
+
+    def __str__(self) -> str:
+        sign = "+" if self.delta >= 0 else ""
+        return f"{self.muscle_slug} {sign}{self.delta:g} on {self.date} ({self.owner.email})"
 
 
 class MonthlyGoal(OwnedMixin, TimestampedModel):

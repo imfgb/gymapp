@@ -10,4 +10,8 @@ urlpatterns = [
     path("<int:snapshot_id>/delete/", views.snapshot_delete, name="delete"),
     path("profile/", views.profile_edit, name="profile"),
     path("goals/", views.goal_edit, name="goals"),
+    # Recovery / fatigue / readiness
+    path("recuperacion/", views.recovery_home, name="recovery"),
+    path("recuperacion/checkin/", views.readiness_checkin, name="readiness_checkin"),
+    path("recuperacion/ajuste/<slug:muscle_slug>/", views.fatigue_adjust, name="fatigue_adjust"),
 ]

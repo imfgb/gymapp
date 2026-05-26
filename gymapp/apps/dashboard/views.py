@@ -73,8 +73,12 @@ def home(request):
     for wd in range(7):
         w = by_weekday.get(wd)
         rd = w.routine_day if (w and w.routine_day_id) else None
-        # An archived routine no longer drives the schedule.
-        if rd is not None and rd.routine.is_archived:
+        # Defense in depth: an archived routine, or a stale row that still
+        # points at another user's routine (possible from older data), must not
+        # drive this user's schedule.
+        if rd is not None and (
+            rd.routine.is_archived or rd.routine.owner_id != request.user.id
+        ):
             rd = None
         base.append(rd)
 

@@ -51,6 +51,27 @@ def test_dashboard_does_not_show_other_users_data_to_superuser(client):
 
 
 @pytest.mark.django_db
+def test_dashboard_ignores_stale_split_pointing_at_other_user_day(client):
+    """If a (legacy) WeeklySplit row points at another user's RoutineDay, the
+    dashboard must treat that slot as a rest day, never render the other user's
+    routine name."""
+    from gymapp.apps.routines.models import RoutineDay, WeeklySplit
+
+    me = UserFactory(email="me@example.com")
+    other = UserFactory(email="other@example.com")
+    other_routine = Routine.objects.create(owner=other, name="OtherSecretRoutine")
+    other_day = RoutineDay.objects.create(routine=other_routine, label="OtherSecretDay", ordering=0)
+    # Stale cross-owner assignment that should NOT be shown to `me`.
+    WeeklySplit.objects.create(owner=me, weekday=0, routine_day=other_day)
+
+    client.force_login(me)
+    resp = client.get(reverse("dashboard:home"))
+    assert resp.status_code == 200
+    assert b"OtherSecretRoutine" not in resp.content
+    assert b"OtherSecretDay" not in resp.content
+
+
+@pytest.mark.django_db
 def test_for_user_returns_empty_for_anonymous():
     from django.contrib.auth.models import AnonymousUser
 

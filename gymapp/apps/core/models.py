@@ -23,17 +23,18 @@ class TimestampedModel(models.Model):
 
 
 class OwnerScopedQuerySet(models.QuerySet):
-    """Returns only rows owned by the given user.
+    """Returns only rows owned by the given user — always, including superusers.
 
-    Superusers see everything. This is the foundation for the privacy rule:
-    every view that reads user data must go through `.for_user(request.user)`.
+    `/admin` uses `OwnerScopedAdmin` directly (which has its own superuser-sees-all
+    short-circuit), so a superuser who wants to inspect another user's data goes
+    there. Outside `/admin`, every user — superuser included — sees only their
+    own rows. A previous superuser bypass here leaked other users' routines,
+    metrics, PRs etc. into the superuser's personal dashboard.
     """
 
     def for_user(self, user) -> OwnerScopedQuerySet:
         if user is None or not user.is_authenticated:
             return self.none()
-        if user.is_superuser:
-            return self.all()
         return self.filter(owner=user)
 
 

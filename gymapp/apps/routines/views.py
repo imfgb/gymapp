@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,6 +31,7 @@ from gymapp.services.coaching.blocks import BLOCK_LENGTH_WEEKS, block_status
 from gymapp.services.routine_generator import (
     PRESET_LABELS,
     SplitPreset,
+    assign_weekly_split,
     generate_routine,
     preview_routine,
 )
@@ -87,6 +89,13 @@ def routine_create(request: HttpRequest) -> HttpResponse:
                 preset=preset,
                 training_style=training_style,
                 name=name,
+            )
+            # Schedule it onto the week so the dashboard "Hoy"/"Esta semana"
+            # work immediately without a manual trip to the split editor.
+            assign_weekly_split(request.user, routine)
+            messages.success(
+                request,
+                "Rutina generada y programada en tu semana. Ajusta los días si quieres.",
             )
         else:
             routine = Routine.objects.create(
@@ -355,33 +364,77 @@ def weekly_split(request: HttpRequest) -> HttpResponse:
         .select_related("routine")
         .order_by("routine__name", "ordering")
     )
+    # Active routines that actually have days, for the one-click "quick fill".
+    routines = [
+        r
+        for r in Routine.objects.for_user(request.user)
+        .filter(is_archived=False)
+        .prefetch_related("days")
+        .order_by("name")
+        if r.days.exists()
+    ]
     return render(
         request,
         "routines/weekly_split.html",
-        {"rows": rows, "all_days": all_days},
+        {"rows": rows, "all_days": all_days, "routines": routines},
     )
+
+
+def _resolve_owned_day(user, raw_day_id: str):
+    """Return the user's RoutineDay for an id, or None for blank (rest day)."""
+    raw_day_id = (raw_day_id or "").strip()
+    if not raw_day_id:
+        return None
+    return get_object_or_404(RoutineDay, pk=raw_day_id, routine__owner=user)
 
 
 @login_required
 @require_POST
 def weekly_split_assign(request: HttpRequest, weekday: int) -> HttpResponse:
+    """Assign a single weekday (kept for direct/programmatic use)."""
     if weekday not in range(7):
         return HttpResponseBadRequest("weekday must be 0..6")
 
-    raw_day_id = request.POST.get("routine_day", "").strip()
-    routine_day = None
-    if raw_day_id:
-        routine_day = get_object_or_404(
-            RoutineDay,
-            pk=raw_day_id,
-            routine__owner=request.user,
-        )
-
+    routine_day = _resolve_owned_day(request.user, request.POST.get("routine_day", ""))
     WeeklySplit.objects.update_or_create(
         owner=request.user,
         weekday=weekday,
         defaults={"routine_day": routine_day},
     )
+    return redirect("routines:weekly_split")
+
+
+@login_required
+@require_POST
+def weekly_split_save(request: HttpRequest) -> HttpResponse:
+    """Save the whole week in one submit. The editor posts `weekday_<n>` for
+    each of the 7 days, so changing several rows and pressing one button no
+    longer loses the unsaved ones."""
+    for weekday in range(7):
+        routine_day = _resolve_owned_day(request.user, request.POST.get(f"weekday_{weekday}", ""))
+        WeeklySplit.objects.update_or_create(
+            owner=request.user,
+            weekday=weekday,
+            defaults={"routine_day": routine_day},
+        )
+    messages.success(request, "Tu semana quedó guardada.")
+    return redirect("routines:weekly_split")
+
+
+@login_required
+@require_POST
+def apply_to_week(request: HttpRequest, routine_id: int) -> HttpResponse:
+    """Spread one routine's days across the week (Mon-anchored), replacing the
+    current schedule. Lets the user program any routine — generated or built by
+    hand — into their week with one click."""
+    routine = get_object_or_404(
+        Routine.objects.for_user(request.user).prefetch_related("days"), pk=routine_id
+    )
+    if not routine.days.exists():
+        messages.error(request, "Esta rutina no tiene días todavía.")
+        return redirect("routines:detail", routine_id=routine.id)
+    assign_weekly_split(request.user, routine)
+    messages.success(request, f"“{routine.name}” quedó programada en tu semana.")
     return redirect("routines:weekly_split")
 
 

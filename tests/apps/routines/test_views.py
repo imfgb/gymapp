@@ -177,14 +177,95 @@ def test_exercise_update_persists_and_renders_weight_with_period(client, alice):
 
 
 @pytest.mark.django_db
-def test_weekly_split_renders_7_rows(client, alice):
+def test_weekly_split_empty_state_without_routines(client, alice):
     client.force_login(alice)
     resp = client.get(reverse("routines:weekly_split"))
     assert resp.status_code == 200
-    # Spanish weekday labels — at least Monday and Sunday should be present.
-    assert b"Monday" in resp.content or b"Lunes" in resp.content
-    # 7 forms, one per weekday.
-    assert resp.content.count(b'<form method="post"') >= 7
+    assert "Crea una rutina".encode() in resp.content
+
+
+@pytest.mark.django_db
+def test_weekly_split_renders_7_weekday_selects(client, alice):
+    r = Routine.objects.create(owner=alice, name="R")
+    RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    client.force_login(alice)
+    resp = client.get(reverse("routines:weekly_split"))
+    assert resp.status_code == 200
+    # One bulk form with a select per weekday (weekday_0 .. weekday_6).
+    for wd in range(7):
+        assert f'name="weekday_{wd}"'.encode() in resp.content
+
+
+@pytest.mark.django_db
+def test_weekly_split_save_persists_whole_week(client, alice):
+    r = Routine.objects.create(owner=alice, name="R")
+    push = RoutineDay.objects.create(routine=r, label="Push", ordering=0)
+    pull = RoutineDay.objects.create(routine=r, label="Pull", ordering=1)
+    client.force_login(alice)
+    resp = client.post(
+        reverse("routines:weekly_split_save"),
+        data={
+            "weekday_0": str(push.id),
+            "weekday_2": str(pull.id),
+            # the rest left blank -> rest days
+        },
+    )
+    assert resp.status_code == 302
+    assert WeeklySplit.objects.get(owner=alice, weekday=0).routine_day_id == push.id
+    assert WeeklySplit.objects.get(owner=alice, weekday=2).routine_day_id == pull.id
+    assert WeeklySplit.objects.get(owner=alice, weekday=1).routine_day_id is None
+
+
+@pytest.mark.django_db
+def test_generate_routine_auto_schedules_week(client, alice):
+    """Generating a 3-day routine fills the week (Mon/Wed/Fri) so the dashboard
+    shows 'today' without a manual split assignment."""
+    client.force_login(alice)
+    client.post(
+        reverse("routines:create"),
+        data={
+            "name": "Auto PPL",
+            "training_style": "powerbuilding",
+            "mode": "generate",
+            "preset": "ppl_3",
+        },
+    )
+    routine = Routine.objects.for_user(alice).get(name="Auto PPL")
+    days = list(routine.days.order_by("ordering"))
+    assert WeeklySplit.objects.get(owner=alice, weekday=0).routine_day_id == days[0].id
+    assert WeeklySplit.objects.get(owner=alice, weekday=2).routine_day_id == days[1].id
+    assert WeeklySplit.objects.get(owner=alice, weekday=4).routine_day_id == days[2].id
+    # Tuesday is a rest day.
+    assert WeeklySplit.objects.get(owner=alice, weekday=1).routine_day_id is None
+
+
+@pytest.mark.django_db
+def test_apply_to_week_programs_routine(client, alice):
+    r = Routine.objects.create(owner=alice, name="Mi rutina")
+    d0 = RoutineDay.objects.create(routine=r, label="A", ordering=0)
+    d1 = RoutineDay.objects.create(routine=r, label="B", ordering=1)
+    client.force_login(alice)
+    resp = client.post(reverse("routines:apply_to_week", args=[r.id]))
+    assert resp.status_code == 302
+    assert resp.url == reverse("routines:weekly_split")
+    # 2 days -> Monday + Thursday.
+    assert WeeklySplit.objects.get(owner=alice, weekday=0).routine_day_id == d0.id
+    assert WeeklySplit.objects.get(owner=alice, weekday=3).routine_day_id == d1.id
+
+
+@pytest.mark.django_db
+def test_apply_to_week_replaces_previous_schedule(client, alice):
+    old = Routine.objects.create(owner=alice, name="Vieja")
+    old_day = RoutineDay.objects.create(routine=old, label="Old", ordering=0)
+    WeeklySplit.objects.create(owner=alice, weekday=6, routine_day=old_day)
+
+    new = Routine.objects.create(owner=alice, name="Nueva")
+    new_day = RoutineDay.objects.create(routine=new, label="New", ordering=0)
+    client.force_login(alice)
+    client.post(reverse("routines:apply_to_week", args=[new.id]))
+    # 1 day -> Monday; the old Sunday assignment is cleared.
+    assert WeeklySplit.objects.get(owner=alice, weekday=0).routine_day_id == new_day.id
+    assert WeeklySplit.objects.get(owner=alice, weekday=6).routine_day_id is None
 
 
 @pytest.mark.django_db

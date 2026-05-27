@@ -1,5 +1,11 @@
 <article id="elog-{{ elog.id }}"
          class="rounded-lg border border-slate-200 bg-white shadow-sm">
+  {% if elog.exercise.id in avoid_ids %}
+    <div class="rounded-t-lg border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+      ⚠ Te recomendamos evitar este ejercicio — tienes una lesión activa que lo marca.
+      <a href="{% url 'injuries:list' %}" class="underline">Ver lesiones</a>
+    </div>
+  {% endif %}
   <header class="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-baseline sm:justify-between">
     <div class="min-w-0">
       <h2 class="text-lg font-medium break-words">{{ elog.exercise.name }}</h2>

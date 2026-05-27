@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Lesiones · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+  <div>
+    <h1 class="text-2xl font-semibold">Lesiones</h1>
+    <p class="text-sm text-slate-500">Marca ejercicios a evitar mientras una lesión está activa.</p>
+  </div>
+  <a href="{% url 'injuries:create' %}"
+     class="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-ink hover:bg-brand-dark">
+    + Registrar lesión
+  </a>
+</header>
+
+{% if active %}
+<section class="mb-8">
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Activas</h2>
+  <ul class="space-y-3">
+    {% for i in active %}
+      <li class="rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <div class="min-w-0">
+            <p class="font-medium text-amber-900">{{ i.name }}</p>
+            <p class="text-xs text-amber-800">
+              {{ i.get_body_region_display }} · {{ i.get_severity_display }} · desde {{ i.started_on|date:"d M Y" }}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <a href="{% url 'injuries:edit' i.id %}"
+               class="rounded border border-amber-300 px-2 py-1 text-xs text-amber-900 hover:bg-amber-100">
+              Editar
+            </a>
+            <form method="post" action="{% url 'injuries:toggle' i.id %}" class="inline">
+              {% csrf_token %}
+              <button class="rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500">
+                Marcar resuelta
+              </button>
+            </form>
+            <form method="post" action="{% url 'injuries:delete' i.id %}" class="inline"
+                  onsubmit="return confirm('¿Borrar esta lesión?')">
+              {% csrf_token %}
+              <button class="rounded border border-rose-300 px-2 py-1 text-xs text-rose-800 hover:bg-rose-100">
+                Borrar
+              </button>
+            </form>
+          </div>
+        </div>
+        {% with avoid=i.avoid_exercises.all %}
+          <p class="mt-2 text-xs text-amber-800">
+            {% if avoid %}
+              Evitando: {% for e in avoid %}<span class="font-medium">{{ e.name }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}.
+            {% else %}
+              <a href="{% url 'injuries:edit' i.id %}" class="underline">Agrega ejercicios a evitar</a>
+              para que el entrenamiento te avise.
+            {% endif %}
+          </p>
+        {% endwith %}
+        {% if i.notes %}<p class="mt-1 text-xs italic text-amber-800">{{ i.notes }}</p>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+  <p class="mb-8 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+    No tienes lesiones activas. <a href="{% url 'injuries:create' %}" class="underline">Registra una</a> si te lastimaste.
+  </p>
+{% endif %}
+
+{% if resolved %}
+<section>
+  <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Resueltas</h2>
+  <ul class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white text-sm">
+    {% for i in resolved %}
+      <li class="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3">
+        <div class="min-w-0">
+          <p class="font-medium text-slate-700">{{ i.name }}</p>
+          <p class="text-xs text-slate-500">
+            {{ i.get_body_region_display }} · {{ i.started_on|date:"d M Y" }} → {{ i.resolved_on|date:"d M Y" }}
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <form method="post" action="{% url 'injuries:toggle' i.id %}" class="inline">
+            {% csrf_token %}
+            <button class="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50">
+              Reactivar
+            </button>
+          </form>
+          <form method="post" action="{% url 'injuries:delete' i.id %}" class="inline"
+                onsubmit="return confirm('¿Borrar esta lesión?')">
+            {% csrf_token %}
+            <button class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+              Borrar
+            </button>
+          </form>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

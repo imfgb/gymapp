@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from gymapp.apps.workouts.models import ExerciseLog, SetLog, WorkoutSession, WorkoutStatus
 from gymapp.services.analytics import (
+    body_comp_series,
     deload_recommendation,
     sets_by_muscle,
     weekly_volume,
@@ -219,3 +220,77 @@ def test_deload_ignores_current_partial_week(alice, bench):
     advice = deload_recommendation(alice, today=today, threshold=5)
     assert advice.recommended is True
     assert advice.weeks_accumulated == 5
+
+
+# ---------------- body_comp_series ----------------
+
+
+@pytest.mark.django_db
+def test_body_comp_series_empty_when_no_snapshots(alice):
+    assert body_comp_series(alice) == []
+
+
+@pytest.mark.django_db
+def test_body_comp_series_chronological_and_computes_bmi(alice):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    alice.profile.height_cm = 180
+    alice.profile.save()
+    today = timezone.localdate()
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("82"),
+        measured_at=_aware(today - timedelta(days=30)),
+    )
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("80"), body_fat_pct=Decimal("15"),
+        muscle_pct=Decimal("42"), measured_at=_aware(today),
+    )
+    series = body_comp_series(alice, days=180)
+    assert [p.weight_kg for p in series] == [82.0, 80.0]  # oldest -> newest
+    # 80 / 1.80^2 ≈ 24.7
+    assert series[-1].bmi == 24.7
+    assert series[-1].body_fat_pct == 15.0
+    assert series[-1].muscle_pct == 42.0
+    assert series[0].body_fat_pct is None  # older snapshot didn't have it
+
+
+@pytest.mark.django_db
+def test_body_comp_series_respects_days_window(alice):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    today = timezone.localdate()
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("80"),
+        measured_at=_aware(today - timedelta(days=400)),  # outside 180d window
+    )
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("82"),
+        measured_at=_aware(today - timedelta(days=10)),
+    )
+    series = body_comp_series(alice, days=180)
+    assert len(series) == 1
+    assert series[0].weight_kg == 82.0
+
+
+@pytest.mark.django_db
+def test_body_comp_series_bmi_none_without_height(alice):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    alice.profile.height_cm = None
+    alice.profile.save()
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("80"), measured_at=_aware(timezone.localdate()),
+    )
+    series = body_comp_series(alice)
+    assert series[0].bmi is None
+
+
+@pytest.mark.django_db
+def test_body_comp_series_owner_scoped(alice):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    bob = UserFactory(email="bob.body@example.com")
+    UserMetricSnapshot.objects.create(
+        owner=bob, weight_kg=Decimal("80"), measured_at=_aware(timezone.localdate()),
+    )
+    assert body_comp_series(alice) == []

@@ -19,6 +19,7 @@ from gymapp.apps.routines.models import (
 )
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
 from gymapp.services.analytics import (
+    body_comp_series,
     deload_recommendation,
     sets_by_muscle,
     weekly_volume,
@@ -190,6 +191,10 @@ def progress(request):
         for m in muscles
     ]
 
+    # Body comp progression — one chart per series that has data.
+    points = body_comp_series(request.user, days=180)
+    body_charts = _body_comp_charts(points)
+
     return render(
         request,
         "dashboard/progress.html",
@@ -199,5 +204,72 @@ def progress(request):
             "this_week_volume": weekly_rows[-1]["volume_kg"] if weekly_rows else 0,
             "this_week_sets": sum(m["sets"] for m in muscle_rows),
             "deload": deload_recommendation(request.user),
+            "body_charts": body_charts,
         },
     )
+
+
+def _body_comp_charts(points):
+    """Build the SVG-ready data for each body-comp series.
+
+    Returns a list of {key, label, unit, color, last, polyline, min, max, points}
+    dicts. Series with no datapoints are omitted entirely so the template can
+    just `{% for chart in body_charts %}` without per-series guards.
+    """
+    if not points:
+        return []
+
+    width, height, pad_l, pad_r, pad_t, pad_b = 320, 90, 32, 8, 6, 18
+    inner_w = width - pad_l - pad_r
+    inner_h = height - pad_t - pad_b
+    n = len(points)
+    x_step = inner_w / max(1, n - 1)
+
+    series = [
+        ("weight_kg", "Peso", "kg", "#0f172a"),
+        ("bmi", "BMI", "", "#6366f1"),
+        ("body_fat_pct", "% grasa", "%", "#f59e0b"),
+        ("muscle_pct", "% músculo", "%", "#10b981"),
+    ]
+    charts = []
+    for key, label, unit, color in series:
+        values = [getattr(p, key) for p in points]
+        if not any(v is not None for v in values):
+            continue
+        nums = [v for v in values if v is not None]
+        lo, hi = min(nums), max(nums)
+        # 5% padding so flat lines don't sit on the edge.
+        if lo == hi:
+            lo, hi = lo - 1, hi + 1
+        span = hi - lo
+
+        coords = []
+        for i, v in enumerate(values):
+            if v is None:
+                continue
+            x = pad_l + i * x_step
+            y = pad_t + inner_h - ((v - lo) / span) * inner_h
+            coords.append(f"{x:.1f},{y:.1f}")
+        polyline = " ".join(coords)
+
+        # The most recent non-null value, displayed next to the label.
+        last = next((v for v in reversed(values) if v is not None), None)
+
+        charts.append(
+            {
+                "key": key,
+                "label": label,
+                "unit": unit,
+                "color": color,
+                "last": round(last, 1) if last is not None else None,
+                "polyline": polyline,
+                "min": round(lo, 1),
+                "max": round(hi, 1),
+                "width": width,
+                "height": height,
+                "pad_l": pad_l,
+                "pad_t": pad_t,
+                "inner_h": inner_h,
+            }
+        )
+    return charts

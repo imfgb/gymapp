@@ -50,6 +50,47 @@
   </div>
 </section>
 
+{# ============ BODY COMP PROGRESSION ============ #}
+{% if body_charts %}
+<section class="mb-8 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-1 text-sm uppercase tracking-wide text-slate-500">Composición corporal</h2>
+  <p class="mb-3 text-xs text-slate-400">Últimos 6 meses. <a href="{% url 'metrics:list' %}" class="underline">Editar mediciones</a></p>
+  <div class="space-y-5">
+    {% for chart in body_charts %}
+      <div>
+        <div class="mb-1 flex items-baseline justify-between text-sm">
+          <span class="text-slate-700">{{ chart.label }}</span>
+          <span class="tabular-nums text-xs text-slate-500">
+            actual <span class="font-semibold text-slate-900">{{ chart.last }}{% if chart.unit %} {{ chart.unit }}{% endif %}</span>
+            · rango {{ chart.min }}–{{ chart.max }}{% if chart.unit %} {{ chart.unit }}{% endif %}
+          </span>
+        </div>
+        <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}"
+             class="block w-full" preserveAspectRatio="none"
+             style="height: {{ chart.height }}px;">
+          {# Min / max gridlines #}
+          <line x1="{{ chart.pad_l }}" y1="{{ chart.pad_t }}"
+                x2="{{ chart.width }}" y2="{{ chart.pad_t }}"
+                stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3"/>
+          {% with bottom_y=chart.pad_t|add:chart.inner_h %}
+            <line x1="{{ chart.pad_l }}" y1="{{ bottom_y }}"
+                  x2="{{ chart.width }}" y2="{{ bottom_y }}"
+                  stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 3"/>
+          {% endwith %}
+          {# Axis labels (max top, min bottom) #}
+          <text x="0" y="{{ chart.pad_t|add:4 }}" font-size="9" fill="#94a3b8">{{ chart.max }}</text>
+          <text x="0" y="{{ chart.height|add:-4 }}" font-size="9" fill="#94a3b8">{{ chart.min }}</text>
+          {# The line itself #}
+          <polyline fill="none" stroke="{{ chart.color }}" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    points="{{ chart.polyline }}"/>
+        </svg>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {# ============ SETS PER MUSCLE THIS WEEK ============ #}
 <section class="rounded-lg border border-slate-200 bg-white p-5">
   <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Series por músculo (esta semana)</h2>

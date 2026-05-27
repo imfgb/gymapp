@@ -127,6 +127,46 @@ def sets_by_muscle(user, *, today: date | None = None) -> list[MuscleWeek]:
     )
 
 
+@dataclass(frozen=True)
+class BodyCompPoint:
+    """One row from `UserMetricSnapshot`, with BMI derived from profile height."""
+
+    date: date
+    weight_kg: float
+    bmi: float | None
+    body_fat_pct: float | None
+    muscle_pct: float | None
+
+
+def body_comp_series(user, *, days: int = 180) -> list[BodyCompPoint]:
+    """Chronological body-composition points over the last `days` calendar days.
+
+    BMI is computed from `profile.height_cm` (None if height isn't set).
+    Returns oldest -> newest, so a line chart reads left-to-right naturally.
+    """
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    cutoff_dt = timezone.now() - timedelta(days=days)
+    height_cm = getattr(getattr(user, "profile", None), "height_cm", None)
+    snaps = (
+        UserMetricSnapshot.objects.for_user(user)
+        .filter(measured_at__gte=cutoff_dt)
+        .order_by("measured_at")
+    )
+    out: list[BodyCompPoint] = []
+    for s in snaps:
+        out.append(
+            BodyCompPoint(
+                date=s.measured_at.date(),
+                weight_kg=float(s.weight_kg),
+                bmi=s.bmi_for(height_cm),
+                body_fat_pct=float(s.body_fat_pct) if s.body_fat_pct is not None else None,
+                muscle_pct=float(s.muscle_pct) if s.muscle_pct is not None else None,
+            )
+        )
+    return out
+
+
 def deload_recommendation(
     user, *, today: date | None = None, threshold: int = ACCUMULATION_WEEKS
 ) -> DeloadAdvice:

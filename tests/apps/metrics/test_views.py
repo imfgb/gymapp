@@ -88,6 +88,59 @@ def test_metrics_list_renders_bmi_when_height_set(alice, client):
 
 
 @pytest.mark.django_db
+def test_snapshot_edit_updates(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    snap = UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg="80.0", body_fat_pct="15", measured_at=timezone.now(),
+    )
+    client.force_login(alice)
+    resp = client.post(
+        reverse("metrics:edit", args=[snap.id]),
+        {"weight_kg": "81.5", "body_fat_pct": "14.2", "muscle_pct": "43"},
+    )
+    assert resp.status_code == 302
+    snap.refresh_from_db()
+    assert snap.weight_kg == Decimal("81.5")
+    assert snap.body_fat_pct == Decimal("14.2")
+    assert snap.muscle_pct == Decimal("43")
+
+
+@pytest.mark.django_db
+def test_snapshot_edit_cross_user_404(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    bob = UserFactory(email="bob.snap@example.com")
+    snap = UserMetricSnapshot.objects.create(
+        owner=bob, weight_kg="80.0", measured_at=timezone.now(),
+    )
+    client.force_login(alice)
+    resp = client.get(reverse("metrics:edit", args=[snap.id]))
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_progress_page_renders_body_charts_when_data_present(alice, client):
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    alice.profile.height_cm = 178
+    alice.profile.save()
+    UserMetricSnapshot.objects.create(owner=alice, weight_kg="80", measured_at=timezone.now())
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:progress"))
+    assert resp.status_code == 200
+    assert "Composición corporal".encode() in resp.content
+    assert b"<polyline" in resp.content  # the SVG line
+
+
+@pytest.mark.django_db
+def test_progress_page_hides_body_charts_when_no_data(alice, client):
+    client.force_login(alice)
+    resp = client.get(reverse("dashboard:progress"))
+    assert "Composición corporal".encode() not in resp.content
+
+
+@pytest.mark.django_db
 def test_metrics_list_warns_when_height_missing(alice, client):
     from gymapp.apps.metrics.models import UserMetricSnapshot
 

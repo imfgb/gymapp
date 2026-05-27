@@ -61,9 +61,13 @@
 
   <main class="flex-1 px-4 py-6 md:px-8 md:py-10 max-w-5xl mx-auto w-full animate-fade-in">
     {% if messages %}
+      {# Top cards for the regular flash messages, bottom-right toast for
+         anything tagged "toast" (e.g. the feedback success). #}
       <ul class="mb-4 space-y-2">
         {% for m in messages %}
-          <li class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm animate-slide-down">{{ m }}</li>
+          {% if "toast" not in m.tags %}
+            <li class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm animate-slide-down">{{ m }}</li>
+          {% endif %}
         {% endfor %}
       </ul>
     {% endif %}
@@ -71,6 +75,24 @@
     {% block content %}{% endblock %}
   </main>
 </div>
+
+{# ============ FLOATING FEEDBACK BUTTON (auth only) ============ #}
+{% if user.is_authenticated %}
+  {% include "partials/_feedback_button.html" %}
+{% endif %}
+
+{# ============ TOAST AREA (bottom-right, auto-dismiss after 4s) ============ #}
+{% if messages %}
+  {% for m in messages %}
+    {% if "toast" in m.tags %}
+      <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 4000)"
+           x-show="show" x-transition.opacity
+           class="fixed bottom-4 right-20 z-50 max-w-xs rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-lg animate-slide-down">
+        ✅ {{ m }}
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
 
 </body>
 </html>

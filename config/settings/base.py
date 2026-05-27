@@ -52,6 +52,7 @@ LOCAL_APPS = [
     "gymapp.apps.nutrition",
     "gymapp.apps.dashboard",
     "gymapp.apps.injuries",
+    "gymapp.apps.feedback",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS

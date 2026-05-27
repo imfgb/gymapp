@@ -1,0 +1,72 @@
+{% comment %}
+  Floating bug-report button + modal. Lives on every authenticated page via
+  base.html. Hidden for anonymous users (no point reporting bugs you can't
+  reach). The icon is an inline SVG bug — pure shapes, no copyright.
+{% endcomment %}
+
+<div x-data="{ open: false }" class="fixed bottom-4 right-4 z-40 print:hidden">
+  {# Floating action button #}
+  <button type="button"
+          @click="open = true"
+          title="Reportar un bug"
+          aria-label="Reportar un bug"
+          class="group flex h-12 w-12 items-center justify-center rounded-full bg-brand text-ink shadow-lg ring-1 ring-black/10
+                 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-md
+                 focus:outline-none focus:ring-2 focus:ring-brand/60">
+    {# Inline SVG bug — body + antennae + legs. Original shapes, no asset file. #}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         class="h-6 w-6 transition-transform group-hover:scale-110">
+      <path d="M8 2l1.5 2"/><path d="M16 2l-1.5 2"/>
+      <rect x="6" y="7" width="12" height="10" rx="5"/>
+      <line x1="12" y1="7" x2="12" y2="17"/>
+      <path d="M3 10h3"/><path d="M3 14h3"/><path d="M3 18l3-2"/>
+      <path d="M21 10h-3"/><path d="M21 14h-3"/><path d="M21 18l-3-2"/>
+    </svg>
+  </button>
+
+  {# Modal #}
+  <div x-show="open" x-cloak
+       x-transition.opacity
+       class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+       @click.self="open = false"
+       @keydown.escape.window="open = false">
+    <div class="w-full max-w-md rounded-t-xl bg-white p-5 shadow-2xl sm:rounded-xl animate-slide-down">
+      <div class="mb-3 flex items-baseline justify-between">
+        <h2 class="text-lg font-semibold">Reportar un bug</h2>
+        <button type="button" @click="open = false"
+                class="text-sm text-slate-400 hover:text-slate-700">Cerrar</button>
+      </div>
+      <p class="mb-3 text-xs text-slate-500">
+        Cuéntame qué se rompió. Vas con ❤ a fglzb00.
+      </p>
+      <form method="post" action="{% url 'feedback:report' %}" class="space-y-3">
+        {% csrf_token %}
+        <label class="block">
+          <span class="text-xs font-medium text-slate-700">Asunto</span>
+          <input type="text" name="subject" required maxlength="200"
+                 placeholder="ej. No me deja iniciar el entrenamiento"
+                 class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium text-slate-700">Apartado de la app <span class="text-slate-400">(opcional)</span></span>
+          <input type="text" name="page_area" maxlength="120"
+                 placeholder="ej. Rutinas, Nutrición, Sesión…"
+                 class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+        </label>
+        <label class="block">
+          <span class="text-xs font-medium text-slate-700">Descripción</span>
+          <textarea name="description" required rows="4" maxlength="2000"
+                    placeholder="Qué hiciste, qué pasó, qué esperabas que pasara…"
+                    class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"></textarea>
+        </label>
+        <input type="hidden" name="page_url" :value="window.location.pathname + window.location.search">
+        <button type="submit"
+                class="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink shadow-sm
+                       hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm">
+          Reportar bug
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

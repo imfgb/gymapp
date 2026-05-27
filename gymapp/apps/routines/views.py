@@ -146,6 +146,8 @@ def routine_detail(request: HttpRequest, routine_id: int) -> HttpResponse:
         ),
         pk=routine_id,
     )
+    from gymapp.services.rehab import avoided_exercise_ids
+
     visible_exercises = (
         Exercise.objects.visible_to(request.user).select_related("equipment").order_by("name")
     )
@@ -157,6 +159,7 @@ def routine_detail(request: HttpRequest, routine_id: int) -> HttpResponse:
             "picker_exercises": visible_exercises,
             "equipment_choices": Equipment.objects.order_by("name"),
             "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
+            "avoid_ids": avoided_exercise_ids(request.user),
         },
     )
 
@@ -221,6 +224,8 @@ def day_delete(request: HttpRequest, routine_id: int, day_id: int) -> HttpRespon
 
 
 def _render_day_card(request, day: RoutineDay) -> HttpResponse:
+    from gymapp.services.rehab import avoided_exercise_ids
+
     picker_exercises = (
         Exercise.objects.visible_to(request.user).select_related("equipment").order_by("name")
     )
@@ -233,6 +238,7 @@ def _render_day_card(request, day: RoutineDay) -> HttpResponse:
             "picker_exercises": picker_exercises,
             "equipment_choices": Equipment.objects.order_by("name"),
             "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
+            "avoid_ids": avoided_exercise_ids(request.user),
         },
     )
 

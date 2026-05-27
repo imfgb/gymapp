@@ -24,7 +24,7 @@
         {% csrf_token %}
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
-            <p class="break-words text-sm font-medium">{{ rex.exercise.name }}</p>
+            <p class="break-words text-sm font-medium">{% if rex.exercise.id in avoid_ids %}<span title="Lesión activa marca este ejercicio">🚫</span> {% endif %}{{ rex.exercise.name }}</p>
             <p class="text-xs text-slate-500">{{ rex.exercise.equipment.name }}</p>
           </div>
           <button type="button"
@@ -98,7 +98,7 @@
             <li x-show="search === '' || '{{ ex.name|escapejs|lower }}'.includes(search.toLowerCase())"
                 class="flex items-center justify-between gap-2 py-1.5">
               <div class="min-w-0">
-                <p class="break-words text-sm">{{ ex.name }}{% if ex.owner_id %} <span class="ml-1 rounded bg-slate-100 px-1 text-[10px] uppercase tracking-wide text-slate-500">custom</span>{% endif %}</p>
+                <p class="break-words text-sm">{% if ex.id in avoid_ids %}<span title="Lesión activa marca este ejercicio">🚫</span> {% endif %}{{ ex.name }}{% if ex.owner_id %} <span class="ml-1 rounded bg-slate-100 px-1 text-[10px] uppercase tracking-wide text-slate-500">custom</span>{% endif %}</p>
                 <p class="text-xs text-slate-500">{{ ex.equipment.name }}</p>
               </div>
               <form hx-post="{% url 'routines:exercise_add' routine.id day.id %}"

@@ -96,6 +96,7 @@ def start(request: HttpRequest) -> HttpResponse:
 @require_GET
 def session(request: HttpRequest, session_id: int) -> HttpResponse:
     from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
+    from gymapp.services.rehab import avoided_exercise_ids
 
     sess = get_object_or_404(
         WorkoutSession.objects.for_user(request.user).prefetch_related(
@@ -117,6 +118,9 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
         "picker_exercises": picker_exercises,
         "equipment_choices": Equipment.objects.order_by("name"),
         "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
+        # Set of exercise ids the user should avoid (active injuries).
+        # The template uses this both for per-card warnings and picker badges.
+        "avoid_ids": avoided_exercise_ids(request.user),
     }
     return render(request, "workouts/session.html", context)
 
@@ -201,11 +205,7 @@ def swap_exercise_view(request: HttpRequest, session_id: int, elog_id: int) -> H
         return HttpResponseBadRequest(str(exc))
 
     elog.refresh_from_db()
-    return render(
-        request,
-        "workouts/partials/_exercise_card.html",
-        {"elog": elog, "session": sess},
-    )
+    return _render_exercise_card(request, elog)
 
 
 @login_required
@@ -246,10 +246,16 @@ def _require_active_session(user, session_id: int) -> WorkoutSession:
 
 
 def _render_exercise_card(request, elog: ExerciseLog) -> HttpResponse:
+    from gymapp.services.rehab import avoided_exercise_ids
+
     return render(
         request,
         "workouts/partials/_exercise_card.html",
-        {"elog": elog, "session": elog.session},
+        {
+            "elog": elog,
+            "session": elog.session,
+            "avoid_ids": avoided_exercise_ids(request.user),
+        },
     )
 
 

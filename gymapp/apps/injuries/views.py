@@ -90,6 +90,8 @@ def injury_edit(request: HttpRequest, injury_id: int) -> HttpResponse:
         messages.success(request, "Lesión actualizada.")
         return redirect("injuries:edit", injury_id=injury.id)
 
+    from gymapp.services.rehab import mobility_for_region
+
     visible_exercises = (
         Exercise.objects.visible_to(request.user)
         .select_related("equipment")
@@ -105,6 +107,7 @@ def injury_edit(request: HttpRequest, injury_id: int) -> HttpResponse:
             "today": timezone.localdate(),
             "all_exercises": visible_exercises,
             "avoid_ids": set(injury.avoid_exercises.values_list("id", flat=True)),
+            "mobility_for_region": mobility_for_region(injury.body_region, limit=4),
         },
     )
 

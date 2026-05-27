@@ -21,6 +21,7 @@ from gymapp.apps.metrics.models import (
 )
 from gymapp.services.fatigue import daily_advice, fatigue_table
 from gymapp.services.goals import monthly_goal_progress
+from gymapp.services.rehab import mobility_for_user
 
 
 def _decimal_or_none(raw):
@@ -200,6 +201,7 @@ def recovery_home(request: HttpRequest) -> HttpResponse:
             "table": table,
             "today_snap": today_snap,
             "recent_snaps": recent_snaps,
+            "mobility": mobility_for_user(request.user, per_region=2),
         },
     )
 

@@ -14,9 +14,15 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
-from gymapp.apps.injuries.models import BodyRegion, Injury, Severity
-from gymapp.services.rehab import avoided_exercise_ids, warnings_for_exercise
-from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
+from gymapp.apps.injuries.models import BodyRegion, Injury, MobilityExercise, Severity
+from gymapp.services.rehab import (
+    avoided_exercise_ids,
+    mobility_for_region,
+    mobility_for_user,
+    suggested_swap,
+    warnings_for_exercise,
+)
+from tests.factories import EquipmentFactory, ExerciseFactory, MuscleGroupFactory, UserFactory
 
 
 @pytest.fixture
@@ -185,3 +191,97 @@ def test_warnings_for_exercise_is_owner_scoped(alice, bob):
     bob_injury.avoid_exercises.add(ex)
 
     assert warnings_for_exercise(ex, alice) == []
+
+
+# ---------- mobility_for_user / mobility_for_region ----------
+
+
+@pytest.mark.django_db
+def test_mobility_for_user_empty_without_injuries(alice):
+    assert mobility_for_user(alice) == []
+
+
+@pytest.mark.django_db
+def test_mobility_for_user_returns_moves_for_injury_region(alice):
+    MobilityExercise.objects.create(
+        slug="cat-camel-t", name="CatCamelT", body_region="lower_back",
+        instructions="...", is_active=True,
+    )
+    Injury.objects.create(
+        owner=alice, name="Lumbalgia",
+        body_region="lower_back", started_on=timezone.localdate(),
+    )
+    out = mobility_for_user(alice, per_region=10)
+    assert any(m.slug == "cat-camel-t" for m in out)
+
+
+@pytest.mark.django_db
+def test_mobility_for_user_ignores_resolved_injuries(alice):
+    MobilityExercise.objects.create(
+        slug="band-x", name="BandX", body_region="shoulder",
+        instructions="...", is_active=True,
+    )
+    Injury.objects.create(
+        owner=alice, name="OldShoulder", body_region="shoulder",
+        started_on=timezone.localdate() - timedelta(days=30),
+        resolved_on=timezone.localdate() - timedelta(days=5),
+    )
+    out = mobility_for_user(alice)
+    assert all(m.slug != "band-x" for m in out)
+
+
+@pytest.mark.django_db
+def test_mobility_for_user_caps_per_region(alice):
+    for i in range(5):
+        MobilityExercise.objects.create(
+            slug=f"mv-{i}", name=f"MoveZ{i}", body_region="hip",
+            instructions="...", is_active=True,
+        )
+    Injury.objects.create(
+        owner=alice, name="Hip", body_region="hip", started_on=timezone.localdate(),
+    )
+    out = mobility_for_user(alice, per_region=2)
+    assert len(out) == 2
+
+
+@pytest.mark.django_db
+def test_mobility_for_region_returns_moves_for_that_region():
+    MobilityExercise.objects.create(
+        slug="m-knee", name="KneeMove", body_region="knee",
+        instructions="...", is_active=True,
+    )
+    out = mobility_for_region("knee")
+    assert any(m.slug == "m-knee" for m in out)
+
+
+# ---------- suggested_swap ----------
+
+
+@pytest.mark.django_db
+def test_suggested_swap_none_when_no_alternatives(alice):
+    eq = EquipmentFactory(slug="machine-ss")
+    ex = ExerciseFactory(slug="solo-machine", name="Solo", equipment=eq)
+    # No other exercises sharing a primary muscle -> no candidates.
+    assert suggested_swap(ex, alice) is None
+
+
+@pytest.mark.django_db
+def test_suggested_swap_picks_non_avoided_alternative(alice):
+    eq = EquipmentFactory(slug="barbell-ss")
+    chest = MuscleGroupFactory(slug="chest-ss", name="Chest-SS", region="chest")
+    src = ExerciseFactory(slug="bench-src", name="BenchSrc", equipment=eq)
+    src.primary_muscles.add(chest)
+    avoided_alt = ExerciseFactory(slug="incline-avoid", name="InclineAvoid", equipment=eq)
+    avoided_alt.primary_muscles.add(chest)
+    good_alt = ExerciseFactory(slug="dip-ok", name="DipOK", equipment=eq)
+    good_alt.primary_muscles.add(chest)
+
+    inj = Injury.objects.create(
+        owner=alice, name="Shoulder", body_region="shoulder",
+        started_on=timezone.localdate(),
+    )
+    inj.avoid_exercises.add(src, avoided_alt)
+
+    pick = suggested_swap(src, alice)
+    assert pick is not None
+    assert pick.id == good_alt.id  # the only non-avoided candidate

@@ -72,6 +72,23 @@ def snapshot_create(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def snapshot_edit(request: HttpRequest, snapshot_id: int) -> HttpResponse:
+    snap = get_object_or_404(UserMetricSnapshot.objects.for_user(request.user), pk=snapshot_id)
+    if request.method == "POST":
+        weight = _decimal_or_none(request.POST.get("weight_kg"))
+        if weight is None:
+            return HttpResponseBadRequest("weight_kg required")
+        snap.weight_kg = weight
+        snap.body_fat_pct = _decimal_or_none(request.POST.get("body_fat_pct"))
+        snap.muscle_pct = _decimal_or_none(request.POST.get("muscle_pct"))
+        snap.visceral_fat = _decimal_or_none(request.POST.get("visceral_fat"))
+        snap.notes = request.POST.get("notes", "").strip()
+        snap.save()
+        return redirect("metrics:list")
+    return render(request, "metrics/edit.html", {"snap": snap})
+
+
+@login_required
 def snapshot_delete(request: HttpRequest, snapshot_id: int) -> HttpResponse:
     if request.method != "POST":
         return HttpResponseBadRequest("POST only")

@@ -55,7 +55,9 @@
           {% if row.snap.visceral_fat is not None %}{{ row.snap.visceral_fat }}{% else %}—{% endif %}
         </td>
         <td class="px-4 py-2 text-slate-500">{{ row.snap.notes|default:"—" }}</td>
-        <td class="px-4 py-2 text-right">
+        <td class="whitespace-nowrap px-4 py-2 text-right">
+          <a href="{% url 'metrics:edit' row.snap.id %}"
+             class="mr-2 text-sm text-slate-600 hover:underline">Editar</a>
           <form method="post" action="{% url 'metrics:delete' row.snap.id %}" class="inline">
             {% csrf_token %}
             <button class="text-sm text-rose-700 hover:underline"

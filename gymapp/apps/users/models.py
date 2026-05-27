@@ -101,6 +101,11 @@ class Profile(models.Model):
     # When True, the next login forces a password change. Set on admin-created accounts.
     must_change_password = models.BooleanField(default=False)
 
+    # Set the first time the user completes (or explicitly skips) onboarding.
+    # The middleware only redirects to /onboarding/ while this is null, so
+    # later editing your profile to null out a field doesn't re-trigger it.
+    onboarded_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -110,3 +115,9 @@ class Profile(models.Model):
 
     def __str__(self) -> str:
         return f"Profile<{self.user.email}>"
+
+    @property
+    def is_onboarded(self) -> bool:
+        """Sticky flag — once the user has finished (or skipped) onboarding
+        we never redirect them there again, even if they later clear fields."""
+        return self.onboarded_at is not None

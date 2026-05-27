@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Bienvenido · Smart Fit Altama{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold">¡Bienvenido!</h1>
+  <p class="text-sm text-slate-500">Completa estos datos una vez. Los usamos para calcular tus calorías, BMI y recomendaciones.</p>
+</header>
+
+<form method="post" class="max-w-lg space-y-4">
+  {% csrf_token %}
+
+  <fieldset class="rounded-lg border border-slate-200 bg-white p-4">
+    <legend class="px-1 text-xs font-medium uppercase tracking-wide text-slate-500">Tu cuerpo</legend>
+
+    <label class="block">
+      <span class="text-sm text-slate-700">Altura (cm)</span>
+      <input type="number" name="height_cm" min="100" max="250" required
+             value="{{ profile.height_cm|default:'' }}"
+             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+    </label>
+
+    <label class="mt-3 block">
+      <span class="text-sm text-slate-700">Fecha de nacimiento</span>
+      <input type="date" name="date_of_birth" required
+             value="{{ profile.date_of_birth|date:'Y-m-d' }}"
+             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+    </label>
+
+    <fieldset class="mt-3">
+      <legend class="text-sm text-slate-700">Sexo</legend>
+      <p class="mb-1 text-xs text-slate-500">Lo usamos para Mifflin-St Jeor.</p>
+      <div class="flex gap-2">
+        {% for value, label in sexes %}
+          <label class="flex-1">
+            <input type="radio" name="sex" value="{{ value }}" class="peer sr-only"
+                   {% if profile.sex == value %}checked{% endif %} required>
+            <span class="block cursor-pointer rounded-md border border-slate-300 px-3 py-2 text-center text-sm
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">
+              {% if value == "male" %}Hombre{% else %}Mujer{% endif %}
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <label class="mt-3 block">
+      <span class="text-sm text-slate-700">Peso actual (kg) <span class="text-xs text-slate-400">— opcional, registra tu primera medición</span></span>
+      <input type="number" name="weight_kg" step="0.1" min="0"
+             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+    </label>
+  </fieldset>
+
+  <fieldset class="rounded-lg border border-slate-200 bg-white p-4">
+    <legend class="px-1 text-xs font-medium uppercase tracking-wide text-slate-500">Tu entrenamiento</legend>
+
+    <label class="block">
+      <span class="text-sm text-slate-700">Estilo</span>
+      <select name="training_style" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+        {% for value, label in training_styles %}
+          <option value="{{ value }}" {% if profile.training_style == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="mt-3 block">
+      <span class="text-sm text-slate-700">Meta</span>
+      <select name="training_goal" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+        {% for value, label in training_goals %}
+          <option value="{{ value }}" {% if profile.training_goal == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="mt-3 block">
+      <span class="text-sm text-slate-700">Nivel de actividad</span>
+      <select name="activity_level" class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
+        {% for value, label in activity_levels %}
+          <option value="{{ value }}" {% if profile.activity_level == value %}selected{% endif %}>
+            {% if value == "sedentary" %}Sedentario (poco o nada de ejercicio)
+            {% elif value == "light" %}Ligero (1-3 días/sem)
+            {% elif value == "moderate" %}Moderado (3-5 días/sem)
+            {% elif value == "active" %}Activo (6-7 días/sem)
+            {% else %}Muy activo (físico + 2x/día){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+  </fieldset>
+
+  <button type="submit" class="rounded-md bg-brand px-5 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+    Empezar
+  </button>
+</form>
+
+<form method="post" action="{% url 'users:onboarding_skip' %}" class="mt-3">
+  {% csrf_token %}
+  <button class="text-sm text-slate-500 hover:underline">Saltar (usar valores por defecto)</button>
+</form>
+{% endblock %}

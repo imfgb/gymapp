@@ -3,6 +3,9 @@
   {% if elog.exercise.id in avoid_ids %}
     <div class="rounded-t-lg border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
       ⚠ Te recomendamos evitar este ejercicio — tienes una lesión activa que lo marca.
+      {% if elog.swap_suggestion %}
+        <span class="ml-1">Sugerencia: prueba <span class="font-medium">{{ elog.swap_suggestion.name }}</span>.</span>
+      {% endif %}
       <a href="{% url 'injuries:list' %}" class="underline">Ver lesiones</a>
     </div>
   {% endif %}

@@ -130,6 +130,25 @@
   {% endif %}
 </section>
 
+{# ============ MOBILITY (from active injuries) ============ #}
+{% if mobility %}
+<section class="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+  <h2 class="mb-1 text-sm uppercase tracking-wide text-slate-500">Movilidad sugerida</h2>
+  <p class="mb-3 text-xs text-slate-400">Basado en tus <a href="{% url 'injuries:list' %}" class="underline">lesiones activas</a>.</p>
+  <ul class="space-y-3">
+    {% for m in mobility %}
+      <li class="rounded-md bg-slate-50 p-3">
+        <p class="text-sm font-medium">{{ m.name }} <span class="text-xs text-slate-500">· {{ m.get_body_region_display }}</span></p>
+        <p class="mt-1 text-xs text-slate-700">{{ m.instructions }}</p>
+        {% if m.video_url %}
+          <a href="{{ m.video_url }}" target="_blank" rel="noopener" class="mt-1 inline-block text-xs underline">Ver video</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {# ============ RECENT READINESS ============ #}
 {% if recent_snaps %}
 <section class="rounded-lg border border-slate-200 bg-white p-5">

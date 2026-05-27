@@ -96,7 +96,7 @@ def start(request: HttpRequest) -> HttpResponse:
 @require_GET
 def session(request: HttpRequest, session_id: int) -> HttpResponse:
     from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
-    from gymapp.services.rehab import avoided_exercise_ids
+    from gymapp.services.rehab import avoided_exercise_ids, suggested_swap
 
     sess = get_object_or_404(
         WorkoutSession.objects.for_user(request.user).prefetch_related(
@@ -111,6 +111,15 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
         .prefetch_related("primary_muscles")
         .order_by("name")
     )
+    avoid_ids = avoided_exercise_ids(request.user)
+    # Annotate each elog with a swap suggestion when its exercise is avoided.
+    for elog in sess.exercise_logs.all():
+        elog.swap_suggestion = (
+            suggested_swap(elog.exercise, request.user)
+            if elog.exercise_id in avoid_ids
+            else None
+        )
+
     context = {
         "session": sess,
         "progress": workouts_service.session_progress(sess),
@@ -120,7 +129,7 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
         "muscle_groups": MuscleGroup.objects.order_by("region", "name"),
         # Set of exercise ids the user should avoid (active injuries).
         # The template uses this both for per-card warnings and picker badges.
-        "avoid_ids": avoided_exercise_ids(request.user),
+        "avoid_ids": avoid_ids,
     }
     return render(request, "workouts/session.html", context)
 
@@ -246,15 +255,21 @@ def _require_active_session(user, session_id: int) -> WorkoutSession:
 
 
 def _render_exercise_card(request, elog: ExerciseLog) -> HttpResponse:
-    from gymapp.services.rehab import avoided_exercise_ids
+    from gymapp.services.rehab import avoided_exercise_ids, suggested_swap
 
+    avoid_ids = avoided_exercise_ids(request.user)
+    elog.swap_suggestion = (
+        suggested_swap(elog.exercise, request.user)
+        if elog.exercise_id in avoid_ids
+        else None
+    )
     return render(
         request,
         "workouts/partials/_exercise_card.html",
         {
             "elog": elog,
             "session": elog.session,
-            "avoid_ids": avoided_exercise_ids(request.user),
+            "avoid_ids": avoid_ids,
         },
     )
 

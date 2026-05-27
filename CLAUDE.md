@@ -228,6 +228,15 @@ Adapted from `betta-tech/ejemplo-harness-subagentes`. Three roles, one feature `
 
 Operating rules live in `.claude/AGENTS.md`. Per-feature success criteria in `.claude/CHECKPOINTS.md`. Backlog in `.claude/feature_list.json`. Session bootstrap: `bash .claude/init.sh`.
 
+### Project skills (`.claude/skills/<name>/SKILL.md`)
+
+Invoke with a slash. Versioned in the repo so every collaborator (and every Claude Code session) gets the same workflow.
+
+| Skill | File | What it does |
+|---|---|---|
+| `/test` | `.claude/skills/test/SKILL.md` | Run the pytest suite, target a file/app, repair failures without weakening tests, or delegate writing new tests to the `test-writer` subagent with a properly-briefed prompt. |
+| `/debug` | `.claude/skills/debug/SKILL.md` | Five-step debugging discipline: reproduce locally (or in a failing pytest), isolate the root cause, apply the minimum fix, lock with a regression test, browser-verify if UI-adjacent (WebKit at 390×844 to match iPhone Safari). Hard rule: never claim "fixed" without one of test-green / screenshot / user-reproducible repro.
+
 ---
 
 ## 12. Deployment

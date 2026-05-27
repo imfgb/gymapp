@@ -37,7 +37,6 @@ class MonthlyGoalAdmin(OwnerScopedAdmin):
         "year",
         "month",
         "target_sessions",
-        "target_volume_kg",
         "target_bodyweight_kg",
     )
     list_filter = ("owner", "year", "month")

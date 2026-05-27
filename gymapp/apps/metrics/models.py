@@ -123,13 +123,6 @@ class MonthlyGoal(OwnedMixin, TimestampedModel):
     target_sessions = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text="Number of finished sessions this month."
     )
-    target_volume_kg = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Total kg lifted (weight × reps) over completed working sets.",
-    )
     target_bodyweight_kg = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
     )

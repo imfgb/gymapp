@@ -107,28 +107,6 @@ def test_session_target_reached_caps_at_100(alice):
 
 
 @pytest.mark.django_db
-def test_volume_target_sums_completed_working_sets_only(alice):
-    goal = MonthlyGoal.objects.create(
-        owner=alice, year=2026, month=3, target_volume_kg=Decimal("2000")
-    )
-    _finished_session(
-        alice,
-        _aware(2026, 3, 5),
-        [
-            (Decimal("100"), 5, False, True),   # 500 — counts
-            (Decimal("100"), 5, False, True),   # 500 — counts
-            (Decimal("40"), 10, True, True),    # warmup — excluded
-            (Decimal("100"), 5, False, False),  # not completed — excluded
-        ],
-    )
-    row = monthly_goal_progress(goal)[0]
-    assert row.actual == Decimal("1000")
-    assert row.target == Decimal("2000")
-    assert row.pct == 50
-    assert row.reached is False
-
-
-@pytest.mark.django_db
 def test_only_set_targets_produce_rows(alice):
     goal = MonthlyGoal.objects.create(owner=alice, year=2026, month=3, target_sessions=5)
     rows = monthly_goal_progress(goal)

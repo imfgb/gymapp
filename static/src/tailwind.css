@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===========================================================================
+ * Global niceties — animations, transitions, mobile input behavior.
+ * ===========================================================================
+ *
+ * The Smart Fit palette (yellow on near-black) is intentionally limited; the
+ * polish here is movement + subtle elevation, not extra colors.
+ */
+
+@layer base {
+  /* iOS Safari auto-zooms when focusing inputs/selects/textareas with a
+   * computed font-size < 16px. The app uses text-sm (14px) on most inputs
+   * for compactness; this floors them at 16px on actual touch devices so the
+   * focus zoom never triggers. Desktop is unaffected. */
+  @media (hover: none) and (pointer: coarse) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Smooth color / shadow transitions everywhere by default. Specific elements
+   * can opt out with transition-none. */
+  a, button, input, select, textarea, summary {
+    transition: background-color 0.15s ease, color 0.15s ease,
+                border-color 0.15s ease, box-shadow 0.15s ease,
+                transform 0.15s ease;
+  }
+}
+
+@layer components {
+  /* Primary brand button: yellow on near-black, lifts and brightens on hover,
+   * presses down on tap. Used by adding `btn-brand` to a button/link. */
+  .btn-brand {
+    @apply rounded-md bg-brand text-ink font-medium px-4 py-2
+           shadow-sm hover:shadow-md hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-sm
+           focus:outline-none focus:ring-2 focus:ring-brand/60;
+  }
+
+  /* Card with a soft hover lift. Useful for clickable rows / dashboard tiles. */
+  .card-lift {
+    @apply transition-transform hover:-translate-y-0.5 hover:shadow-md;
+  }
+}

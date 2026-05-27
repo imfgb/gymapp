@@ -85,10 +85,10 @@
 
 {# ============ TODAY'S READINESS / ADVICE ============ #}
 {% if advice.level != "rest" or advice.readiness is not None %}
-<section class="mb-6 rounded-lg border p-4
+<section class="mb-6 rounded-lg border p-4 animate-fade-in
                 {% if advice.color == 'rose' %}border-rose-300 bg-rose-50
                 {% elif advice.color == 'amber' %}border-amber-300 bg-amber-50
-                {% elif advice.color == 'emerald' %}border-emerald-300 bg-emerald-50
+                {% elif advice.color == 'emerald' %}border-emerald-300 bg-emerald-50 animate-pulse-brand
                 {% else %}border-slate-200 bg-white{% endif %}">
   <div class="flex items-baseline justify-between gap-2">
     <p class="text-xs uppercase tracking-wide text-slate-500">Estado de hoy</p>
@@ -141,8 +141,8 @@
   <h2 class="mb-3 text-sm uppercase tracking-wide text-slate-500">Esta semana</h2>
   <ul class="grid grid-cols-2 gap-2 md:grid-cols-7">
     {% for day in week_view %}
-      <li class="rounded-md border p-3 text-sm
-                 {% if day.is_today %}border-brand bg-brand text-ink{% elif day.is_skipped %}border-slate-200 bg-slate-100{% else %}border-slate-200 bg-white{% endif %}">
+      <li class="rounded-md border p-3 text-sm card-lift
+                 {% if day.is_today %}border-brand bg-brand text-ink shadow-md{% elif day.is_skipped %}border-slate-200 bg-slate-100{% else %}border-slate-200 bg-white{% endif %}">
         <p class="text-xs uppercase">{{ day.weekday_label|slice:":3" }}</p>
         <p class="mt-1 break-words font-medium leading-tight">
           {% if day.is_skipped %}

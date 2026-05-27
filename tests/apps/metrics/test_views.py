@@ -30,13 +30,12 @@ def test_post_upserts_current_month_goal(alice, client):
     client.force_login(alice)
     resp = client.post(
         reverse("metrics:goals"),
-        {"target_sessions": "16", "target_volume_kg": "50000", "target_bodyweight_kg": "78.5"},
+        {"target_sessions": "16", "target_bodyweight_kg": "78.5"},
     )
     assert resp.status_code == 302
     today = timezone.localdate()
     goal = MonthlyGoal.objects.get(owner=alice, year=today.year, month=today.month)
     assert goal.target_sessions == 16
-    assert goal.target_volume_kg == Decimal("50000")
     assert goal.target_bodyweight_kg == Decimal("78.5")
 
 
@@ -251,11 +250,11 @@ def test_post_twice_overwrites_target(alice, client):
 def test_blank_fields_clear_targets(alice, client):
     client.force_login(alice)
     url = reverse("metrics:goals")
-    client.post(url, {"target_sessions": "10", "target_volume_kg": "1000"})
-    client.post(url, {"target_sessions": "", "target_volume_kg": ""})
+    client.post(url, {"target_sessions": "10", "target_bodyweight_kg": "78.5"})
+    client.post(url, {"target_sessions": "", "target_bodyweight_kg": ""})
     goal = MonthlyGoal.objects.get(owner=alice)
     assert goal.target_sessions is None
-    assert goal.target_volume_kg is None
+    assert goal.target_bodyweight_kg is None
 
 
 @pytest.mark.django_db

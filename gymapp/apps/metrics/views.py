@@ -145,7 +145,6 @@ def goal_edit(request: HttpRequest) -> HttpResponse:
     )
     if request.method == "POST":
         goal.target_sessions = _int_or_none(request.POST.get("target_sessions"))
-        goal.target_volume_kg = _decimal_or_none(request.POST.get("target_volume_kg"))
         goal.target_bodyweight_kg = _decimal_or_none(request.POST.get("target_bodyweight_kg"))
         goal.save()
         return redirect("metrics:goals")

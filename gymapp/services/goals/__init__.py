@@ -14,10 +14,8 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import F, Sum
-
 from gymapp.apps.metrics.models import MonthlyGoal, UserMetricSnapshot
-from gymapp.apps.workouts.models import SetLog, WorkoutSession, WorkoutStatus
+from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
 
 
 @dataclass(frozen=True)
@@ -90,27 +88,6 @@ def monthly_goal_progress(goal: MonthlyGoal) -> list[GoalMetric]:
                 unit="",
                 pct=_pct(done, goal.target_sessions),
                 reached=done >= goal.target_sessions,
-            )
-        )
-
-    if goal.target_volume_kg:
-        volume = SetLog.objects.filter(
-            exercise_log__session__in=finished_sessions,
-            is_warmup=False,
-            completed_at__isnull=False,
-            weight_kg__isnull=False,
-            reps__isnull=False,
-        ).aggregate(v=Sum(F("weight_kg") * F("reps")))["v"] or Decimal("0")
-        volume = Decimal(volume).quantize(Decimal("1"))
-        metrics.append(
-            GoalMetric(
-                key="volume",
-                label="Volumen total",
-                target=goal.target_volume_kg.quantize(Decimal("1")),
-                actual=volume,
-                unit="kg",
-                pct=_pct(volume, goal.target_volume_kg),
-                reached=volume >= goal.target_volume_kg,
             )
         )
 

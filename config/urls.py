@@ -34,6 +34,7 @@ urlpatterns = [
     path("nutrition/", include("gymapp.apps.nutrition.urls")),
     path("lesiones/", include("gymapp.apps.injuries.urls")),
     path("onboarding/", include("gymapp.apps.users.urls")),
+    path("feedback/", include("gymapp.apps.feedback.urls")),
     path("", include("gymapp.apps.dashboard.urls")),
 ]
 

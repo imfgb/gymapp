@@ -177,11 +177,44 @@ def test_exercise_update_persists_and_renders_weight_with_period(client, alice):
 
 
 @pytest.mark.django_db
+def test_exercise_update_drops_negative_weight_and_clamps_rest(client, alice):
+    """A negative target weight would prefill into a session and corrupt
+    tonnage; a negative rest timer is nonsense. Both are sanitised."""
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    rex = RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(),
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+    )
+    client.force_login(alice)
+
+    resp = client.post(
+        reverse("routines:exercise_update", args=[r.id, day.id, rex.id]),
+        data={
+            "target_sets": "3",
+            "target_reps_low": "8",
+            "target_reps_high": "12",
+            "target_weight_kg": "-60",
+            "rest_seconds": "-30",
+        },
+    )
+
+    assert resp.status_code == 200
+    rex.refresh_from_db()
+    assert rex.target_weight_kg is None  # negative dropped
+    assert rex.rest_seconds == 0  # clamped, not negative
+
+
+@pytest.mark.django_db
 def test_weekly_split_empty_state_without_routines(client, alice):
     client.force_login(alice)
     resp = client.get(reverse("routines:weekly_split"))
     assert resp.status_code == 200
-    assert "Crea una rutina".encode() in resp.content
+    assert b"Crea una rutina" in resp.content
 
 
 @pytest.mark.django_db

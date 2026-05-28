@@ -157,7 +157,7 @@ def body_comp_series(user, *, days: int = 180) -> list[BodyCompPoint]:
     for s in snaps:
         out.append(
             BodyCompPoint(
-                date=s.measured_at.date(),
+                date=timezone.localtime(s.measured_at).date(),
                 weight_kg=float(s.weight_kg),
                 bmi=s.bmi_for(height_cm),
                 body_fat_pct=float(s.body_fat_pct) if s.body_fat_pct is not None else None,

@@ -38,12 +38,15 @@ from gymapp.services.routine_generator import (
 
 
 def _decimal_or_none(raw):
+    """A negative target weight would prefill into a session and corrupt
+    tonnage; drop negatives (the ORM doesn't run field validators)."""
     if raw in (None, ""):
         return None
     try:
-        return Decimal(raw)
+        value = Decimal(raw)
     except (InvalidOperation, TypeError):
         return None
+    return value if value >= 0 else None
 
 
 def _int_or_default(raw, default):
@@ -325,7 +328,8 @@ def exercise_update(
     rex.target_reps_high = hi
     rex.target_weight_kg = _decimal_or_none(request.POST.get("target_weight_kg"))
     rest = request.POST.get("rest_seconds")
-    rex.rest_seconds = _int_or_default(rest, None) if rest else None
+    parsed_rest = _int_or_default(rest, None) if rest else None
+    rex.rest_seconds = max(0, parsed_rest) if parsed_rest is not None else None
     rex.notes = request.POST.get("notes", "")[:200]
     rex.save()
     return _render_day_card(request, day)

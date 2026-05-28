@@ -255,6 +255,26 @@ def test_body_comp_series_chronological_and_computes_bmi(alice):
 
 
 @pytest.mark.django_db
+def test_body_comp_series_dates_use_local_timezone(alice):
+    """A snapshot logged in the evening (local) is the next day in UTC. The
+    chart x-axis must use the local date, not the raw UTC `.date()`."""
+    from datetime import datetime
+
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    local_day = timezone.localdate()
+    evening_local = timezone.make_aware(
+        datetime(local_day.year, local_day.month, local_day.day, 22, 0)
+    )
+    UserMetricSnapshot.objects.create(
+        owner=alice, weight_kg=Decimal("80"), measured_at=evening_local
+    )
+    series = body_comp_series(alice, days=180)
+    assert len(series) == 1
+    assert series[0].date == local_day
+
+
+@pytest.mark.django_db
 def test_body_comp_series_respects_days_window(alice):
     from gymapp.apps.metrics.models import UserMetricSnapshot
 

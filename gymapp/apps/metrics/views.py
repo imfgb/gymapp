@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
@@ -9,8 +10,6 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
-
-from datetime import timedelta
 
 from gymapp.apps.exercises.models import MuscleGroup
 from gymapp.apps.metrics.models import (
@@ -25,21 +24,25 @@ from gymapp.services.rehab import mobility_for_user
 
 
 def _decimal_or_none(raw):
+    """Body metrics are never negative; a negative weight would corrupt BMI and
+    the nutrition BMR/macro math. The ORM skips validators, so clamp here."""
     if raw in (None, ""):
         return None
     try:
-        return Decimal(raw)
+        value = Decimal(raw)
     except (InvalidOperation, TypeError):
         return None
+    return value if value >= 0 else None
 
 
 def _int_or_none(raw):
     if raw in (None, ""):
         return None
     try:
-        return int(Decimal(raw))
+        value = int(Decimal(raw))
     except (InvalidOperation, TypeError, ValueError):
         return None
+    return value if value >= 0 else None
 
 
 @login_required

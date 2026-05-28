@@ -32,6 +32,7 @@ class UserFactory(factory.django.DjangoModelFactory):
             obj.profile.save()
             return
         from datetime import date
+
         from django.utils import timezone
 
         prof = obj.profile

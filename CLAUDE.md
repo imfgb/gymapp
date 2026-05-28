@@ -119,15 +119,17 @@ gymapp/                              # repo root
 
 | App | Responsibility | Key models |
 |---|---|---|
-| `core` | Cross-cutting mixins: `TimestampedModel`, `OwnerScopedQuerySet`, `OwnedMixin`, `OwnerScopedAdmin`. | (no models) |
-| `users` | Custom User (email-as-username), Profile (training prefs, height, DOB, sex, activity level), one-shot password-change-on-first-login. | `User`, `Profile` |
+| `core` | Cross-cutting mixins: `TimestampedModel`, `OwnerScopedQuerySet`, `OwnedMixin`, `OwnerScopedAdmin`. Plus `context_processors.page_hint` (per-page suggestion banners). | (no models) |
+| `users` | Custom User (email-as-username), Profile (training prefs, height, DOB, sex, activity level, `onboarded_at` flag, `food_preferences`), one-shot password-change-on-first-login, `OnboardingMiddleware`. | `User`, `Profile` |
 | `exercises` | Curated + custom exercise catalogue. Each tags primary/secondary muscle groups, equipment, category. Self-referencing alternatives M2M. | `MuscleGroup`, `Equipment`, `Exercise` (nullable `owner` → null = global), `ExerciseAlternative` |
 | `routines` | User-defined workout templates, weekly schedule, skip-days, and 6-week training blocks. | `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit`, `SkippedDay`, `TrainingBlock` |
 | `workouts` | Actual training sessions and set-by-set logs. Drives the interactive checklist. | `WorkoutSession`, `ExerciseLog`, `SetLog` |
 | `prs` | Personal records per exercise per rep-count. Auto-detected from finished `SetLog`s + manual overrides. | `PersonalRecord` |
-| `metrics` | Body composition snapshots + per-month goals. | `UserMetricSnapshot`, `MonthlyGoal` |
+| `metrics` | Body composition snapshots, per-month goals, fatigue/readiness inputs. | `UserMetricSnapshot`, `MonthlyGoal`, `ReadinessSnapshot`, `FatigueAdjustment` |
 | `nutrition` | Nutrition page: calorie + macro target, food preferences, user-generated saved meals (generate from prefs / mark eaten / delete; daily-scoped), and an optional supplement tracker (common + custom, mark-taken with timestamp, daily reset). | `SavedMeal`, `Supplement` |
-| `dashboard` | Read-only views: today's workout, this week's split, recent history, PR highlights. | (no models) |
+| `injuries` | Rehab/prevention: injury log + avoid-exercise warnings, mobility library + auto-swap suggestions. | `Injury`, `MobilityExercise` |
+| `feedback` | In-app bug reporting: floating button → `BugReport`; superuser-only triage dashboard at `/feedback/admin/`. Not owner-scoped (reports belong to the superuser to read). | `BugReport` |
+| `dashboard` | Read-only views: today's workout, this week's split, recent history, PR highlights, progreso charts. | (no models) |
 
 ---
 
@@ -141,8 +143,13 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `progression` | `recommend_next` returns the last completed weight×reps. | Linear/double progression → RPE-driven → AI-tuned. |
 | `substitution` | Delegates to `exercise_library`. | Multi-factor scoring (Phase 2). |
 | `coaching` | Facade re-exporting `progression` + `substitution`; `blocks` submodule = deterministic 6-week block templates + `block_status`. | AI-orchestrated programming (Phase 4, skipped). |
-| `nutrition` | `DeterministicNutrition` (BMR→TDEE→macros), `daily_target_for_user`, `FOOD_CATALOG`, `build_meal_plan` (deterministic plan) + `generate_meal` (varied, for saved meals). | AI meal rec (Phase 4, skipped). |
-| `analytics` | `weekly_volume` + `sets_by_muscle` + `deload_recommendation`. Powers `/progreso/` + deload alerts. | PR cadence, intensity heatmaps (Phase 5 cont.). |
+| `nutrition` | `DeterministicNutrition` (BMR→TDEE→macros), `daily_target_for_user`, `FOOD_CATALOG`, `MEAL_TEMPLATES` (~852 recipe shells + specials), `build_meal_plan` + `generate_meal`, `FOOD_PORTIONS`/`portion_label`, supplement constants. | AI meal rec (Phase 4, skipped). |
+| `analytics` | `weekly_volume` + `sets_by_muscle` + `deload_recommendation` + `body_comp_series`. Powers `/progreso/` + deload alerts. | PR cadence, intensity heatmaps. |
+| `routine_generator` | `generate_routine` (split preset + style → days/exercises with rep schemes) + `assign_weekly_split` (`WEEKDAY_PATTERNS`). | — |
+| `warmup` | `warmup_scheme()` — 40/60/80% ramp snapped to loadable weights per equipment. | — |
+| `goals` | `monthly_goal_progress` → per-target `GoalMetric` bars (sessions / bodyweight, baseline-relative). | — |
+| `fatigue` | `compute_muscle_fatigue` (per-muscle exponential decay) + `daily_advice` (fatigue × readiness → rest/light/moderate/heavy). Deterministic, no jobs. | — |
+| `rehab` | `avoided_exercise_ids` / `warnings_for_exercise` (active-injury avoid set), `mobility_for_user`, `suggested_swap`. | — |
 
 **The AI seam:** every service exposes a `Strategy` (Protocol) and a `Deterministic*` implementation. A future `LLMStrategy` (Claude API) can be selected via settings without touching call sites. Document the contract in `docs/service_layer.md`.
 
@@ -273,6 +280,8 @@ Detail → `ROADMAP.md`.
 
 ## 14. Current implementation status
 
+> **TL;DR (2026-05-28):** Roadmap phases **1, 2, 3, 5 are complete; Phase 4 (AI) is intentionally skipped** (no budget — see `feedback-no-spend`). The deterministic app is feature-complete and **live on Railway**. Post-roadmap work added: fatigue/readiness, rehab/prevention (injuries + mobility), nutrition meals/portions/supplements, onboarding wizard, body-comp charts, in-app bug reporting (`feedback` app), and per-page hint banners (`core.context_processors.page_hint`). Recent hardening: removed a `for_user` superuser bypass (privacy), fixed two UTC-vs-local `.date()` bugs (fatigue + body-comp chart), rejected negative numeric form input, fixed a leaked multi-line `{# #}` comment, and cleaned all ruff lint. **Test suite: 377 passing; `ruff check .` clean (2026-05-28).**
+
 **Phase 1 — Tracking MVP: complete.** All six Phase 1 features in `.claude/feature_list.json` are `done`. The MVP loop works end-to-end: a user can build a routine, schedule it on weekdays, start today's workout from the dashboard, tap-complete sets with the rest timer, finish the session, and see PRs auto-detected.
 
 **Phase 2 — Programming: in progress.** Features landed so far (2026-05-21):
@@ -346,7 +355,7 @@ Detail → `ROADMAP.md`.
 4. **Exercise picker in routines**: `_render_day_card()` now includes `picker_exercises` queryset.
 5. **Routine create auto-preview**: hidden declarative HTMX button avoids `hx-boost` interference.
 
-**Test suite: 244 tests passing (2026-05-24).** Coverage: workout service + views, progression service (unit + DB integration), exercise library, PR service, routine generator, substitution, warmup, monthly goals (service + editor view + dashboard card), nutrition (BMR/TDEE/macros service + page view + profile editor + food-preferences catalogue/editor + meal-plan builder + daily-reset scoping + supplement tracker), analytics (weekly volume + sets-per-muscle + deload recommendation + Progreso page), block-programming (block templates service + block page/view), dashboard (incl. skip-day slide-forward + archived-routine filtering), routines (incl. custom-exercise creation), metrics, smoke.
+**Test suite: 377 tests passing (2026-05-28); `ruff check .` clean.** Coverage: workout service + views (incl. negative-input rejection), progression service (unit + DB integration), exercise library, PR service, routine generator + weekly-split assignment, substitution, warmup, monthly goals, nutrition (BMR/TDEE/macros + meals + portions + daily-reset + supplements), analytics (weekly volume + sets-per-muscle + deload + body-comp series incl. TZ-correctness), fatigue/readiness service + recovery views, injuries (rehab service + CRUD views + owner scoping), block-programming, dashboard (skip-day slide-forward + archived-routine filtering), routines, metrics (incl. body-comp + edit), feedback (bug report + superuser triage), per-page hints (`core.context_processors`), owner-scoping regression suite, onboarding, smoke.
 
 **Environment (2026-05-21):** Project is at `~/gymapp/` (moved off iCloud `Documents/`). Python 3.12, Node 24. `.env` → SQLite. Superuser: `fglzb00@gmail.com` / `***REMOVED***`. Start server: `source .venv/bin/activate && python manage.py runserver`.
 
@@ -434,16 +443,16 @@ Update this section at the start of every phase transition.
 
 ## 18. Pending pickup (resume here)
 
-In priority order for the next session:
+**The roadmap is done and the app is live.** GitHub push + Railway deploy are routine (push to `main`, then nudge a Railway variable to deploy — see §12). No outstanding roadmap work.
 
-1. **GitHub push.** `gh` is installed. Run `! gh auth login --hostname github.com --git-protocol ssh --web`, then push. Auto-deploy to Railway triggers on push to `main`.
-2. **Railway deploy.** Runbook in `DEPLOYMENT.md §2`. Requires env vars: `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL` (auto-injected).
-3. **Phase 2 remaining features** (in order from `ROADMAP.md`):
-   - **substitution-scoring**: multi-factor ranking for the "swap exercise" picker (muscle overlap, equipment, fatigue).
-   - **warmup-generation**: auto-prepend `is_warmup=True` SetLogs (e.g. 50%×5, 70%×3, 85%×1) when starting a session.
-   - **monthly-goals**: `MonthlyGoal` model + dashboard card.
-4. **Phase 2 exit criterion check**: "swap exercise returns ranked alternatives" — currently returns unranked. Progression pre-fill is done.
+Candidate next features if the user asks "what's next" (all deterministic / free, none committed to):
+1. **Per-exercise strength charts** — a weight×reps-over-time SVG line on each PR/exercise page; reuse `analytics.body_comp_series` + the `/progreso/` SVG pattern. Data already exists in `SetLog` history. (Highest user value.)
+2. **`manage.py seed_demo`** — populate a new user with routine + WeeklySplit + metrics + session history so invited friends don't see empty screens. Still a nicety (see §8).
+3. **Create users outside `/admin`** — a superuser-only page to add friends (email+password) without the Django admin.
+4. **Export my data (CSV)** — download workout/PR history.
+
+Working agreement (confirmed across sessions): build ONE feature at a time with tests + `npm run build:css` (if Tailwind changed) + browser-verify at 390px + commit + push + memory update. The user deploys to Railway manually. Don't add paid APIs/hosting (`feedback-no-spend`). Verify before claiming fixed (`feedback-verify-before-deploy`).
 
 Local dev state:
-- Project at `~/gymapp/`. Server starts with: `source .venv/bin/activate && python manage.py runserver`
-- `pytest` → 100 passing. `ruff check .` → clean.
+- Project at `~/gymapp/`. Server starts with: `source .venv/bin/activate && python manage.py runserver` (`.env` → SQLite).
+- `pytest` → 377 passing. `ruff check .` → clean.

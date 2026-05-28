@@ -30,7 +30,6 @@ from gymapp.services.fatigue import (
 )
 from tests.factories import EquipmentFactory, ExerciseFactory, MuscleGroupFactory, UserFactory
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

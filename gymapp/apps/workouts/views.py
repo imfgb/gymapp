@@ -80,11 +80,14 @@ def start(request: HttpRequest) -> HttpResponse:
     else:
         weekday = timezone.localtime().weekday()
         split = WeeklySplit.objects.for_user(request.user).filter(weekday=weekday).first()
-        if split is not None and split.routine_day is not None:
-            # Defense in depth: don't start a session from a stale split row
-            # that still points at another user's routine day.
-            if split.routine_day.routine.owner_id == request.user.id:
-                routine_day = split.routine_day
+        # Defense in depth: don't start a session from a stale split row that
+        # still points at another user's routine day.
+        if (
+            split is not None
+            and split.routine_day is not None
+            and split.routine_day.routine.owner_id == request.user.id
+        ):
+            routine_day = split.routine_day
 
     # When started from the dashboard picker, make today's schedule reflect the
     # chosen routine so "Esta semana" stays in sync with what the user trained.

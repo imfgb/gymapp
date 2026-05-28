@@ -133,7 +133,7 @@ def test_workout_session_page_shows_warning_for_avoided_exercise(alice, bench, c
     client.force_login(alice)
     resp = client.get(reverse("workouts:session", args=[sess.id]))
     assert resp.status_code == 200
-    assert "Te recomendamos evitar este ejercicio".encode() in resp.content
+    assert b"Te recomendamos evitar este ejercicio" in resp.content
 
 
 @pytest.mark.django_db
@@ -153,7 +153,7 @@ def test_workout_session_page_no_warning_when_injury_resolved(alice, bench, clie
     ExerciseLog.objects.create(session=sess, exercise=bench, ordering=0)
     client.force_login(alice)
     resp = client.get(reverse("workouts:session", args=[sess.id]))
-    assert "Te recomendamos evitar este ejercicio".encode() not in resp.content
+    assert b"Te recomendamos evitar este ejercicio" not in resp.content
 
 
 @pytest.mark.django_db
@@ -170,4 +170,4 @@ def test_workout_session_picker_shows_block_badge_for_avoided(alice, bench, clie
     client.force_login(alice)
     resp = client.get(reverse("workouts:session", args=[sess.id]))
     # The 🚫 emoji should appear in the picker section before bench's name.
-    assert "🚫".encode("utf-8") in resp.content
+    assert "🚫".encode() in resp.content

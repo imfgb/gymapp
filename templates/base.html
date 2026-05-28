@@ -37,6 +37,23 @@
   <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
   <script>
+    // Per-page hint banner: shown unless the user dismissed it before
+    // (remembered in localStorage). Registered on alpine:init so the factory
+    // exists before Alpine walks the DOM.
+    document.addEventListener("alpine:init", () => {
+      Alpine.data("pageHint", (key) => ({
+        show: false,
+        init() {
+          try { this.show = !localStorage.getItem(key); }
+          catch (e) { this.show = true; }
+        },
+        dismiss() {
+          try { localStorage.setItem(key, "1"); } catch (e) {}
+          this.show = false;
+        },
+      }));
+    });
+
     document.addEventListener("DOMContentLoaded", () => {
       const token = document.querySelector('meta[name="csrf-token"]').content;
       document.body.addEventListener("htmx:configRequest", (e) => {
@@ -60,6 +77,31 @@
   {% endif %}
 
   <main class="flex-1 px-4 py-6 md:px-8 md:py-10 max-w-5xl mx-auto w-full animate-fade-in">
+    {% if page_hint %}
+      {% comment %}
+        Per-page suggestion banner just under the nav. Dismissal is remembered
+        in localStorage keyed by `page_hint.key`, so once the user closes it (or
+        navigates away and comes back) it doesn't nag again. Pure client-side —
+        no DB writes (fits the no-jobs constraint).
+      {% endcomment %}
+      <div x-data="pageHint('{{ page_hint.key }}')" x-show="show" x-cloak
+           x-transition.opacity
+           class="mb-4 flex items-start gap-3 rounded-lg border-l-4 border-brand bg-brand/10 px-4 py-3 animate-slide-down">
+        <span class="mt-0.5 text-lg leading-none" aria-hidden="true">💡</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-semibold text-ink">{{ page_hint.title }}</p>
+          <p class="mt-0.5 text-sm leading-snug text-slate-700">{{ page_hint.body }}</p>
+        </div>
+        <button type="button" @click="dismiss()"
+                aria-label="Ocultar sugerencia"
+                class="-mr-1 rounded p-1 text-slate-500 hover:bg-brand/20 hover:text-ink">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    {% endif %}
+
     {% if messages %}
       {% comment %}
         Top cards for the regular flash messages, bottom-right toast for

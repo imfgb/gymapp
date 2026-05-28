@@ -103,7 +103,10 @@ def compute_muscle_fatigue(user, today: date | None = None) -> dict[str, MuscleF
 
     by_muscle: dict[str, dict[str, float]] = defaultdict(lambda: {"score": 0.0, "sets": 0})
     for s in sets:
-        days_since = (today - s.completed_at.date()).days
+        # `completed_at` is stored UTC; convert to local before extracting the
+        # date so `days_since` matches `today = localdate()` instead of straddling
+        # midnight UTC (Mexico City is UTC-6, so 18:00-24:00 local is the next UTC day).
+        days_since = (today - timezone.localtime(s.completed_at).date()).days
         for m in s.exercise_log.exercise.primary_muscles.all():
             hl = MUSCLE_HALF_LIFE_DAYS.get(m.slug, DEFAULT_HALF_LIFE_DAYS)
             by_muscle[m.slug]["score"] += _decay(days_since, hl)

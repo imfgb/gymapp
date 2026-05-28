@@ -190,3 +190,6 @@ def test_toast_renders_bottom_right_after_successful_report(alice, client):
     )
     assert resp.status_code == 200
     assert "Bug reportado exitosamente".encode() in resp.content
+    # Regression: the surrounding {% if messages %} block must not leak its own
+    # template comments — a multi-line {# … #} renders as literal text.
+    assert b"{#" not in resp.content

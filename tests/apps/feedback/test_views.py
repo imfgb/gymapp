@@ -166,7 +166,7 @@ def test_floating_bug_button_present_on_dashboard(alice, client):
     client.force_login(alice)
     resp = client.get(reverse("dashboard:home"))
     assert resp.status_code == 200
-    assert "Reportar un bug".encode() in resp.content
+    assert b"Reportar un bug" in resp.content
 
 
 @pytest.mark.django_db
@@ -189,7 +189,7 @@ def test_toast_renders_bottom_right_after_successful_report(alice, client):
         follow=True,
     )
     assert resp.status_code == 200
-    assert "Bug reportado exitosamente".encode() in resp.content
+    assert b"Bug reportado exitosamente" in resp.content
     # Regression: the surrounding {% if messages %} block must not leak its own
     # template comments — a multi-line {# … #} renders as literal text.
     assert b"{#" not in resp.content

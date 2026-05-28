@@ -18,10 +18,8 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Iterable
 
 from django.utils import timezone
-
 
 # Half-life in days for fatigue contribution from a set to decay. Bigger
 # posterior-chain muscles take longer to recover than small isolation work.

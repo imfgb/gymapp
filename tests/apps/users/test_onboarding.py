@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 from django.urls import reverse
-from django.utils import timezone
 
 from gymapp.apps.metrics.models import UserMetricSnapshot
 from tests.factories import UserFactory

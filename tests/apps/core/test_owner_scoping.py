@@ -93,6 +93,7 @@ def _make_bob_with_workout_data():
     + body snapshot + meal + supplement. Returns bob and a few identifying
     strings that must NEVER appear in another user's response."""
     from datetime import timedelta
+
     from django.utils import timezone
 
     from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup

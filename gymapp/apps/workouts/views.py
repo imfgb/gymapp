@@ -30,23 +30,30 @@ from gymapp.services import workouts as workouts_service
 
 
 def _decimal_or_none(raw):
+    """Parse a weight. Negatives are invalid (the ORM skips full_clean, so a
+    crafted POST would otherwise persist a negative weight → negative tonnage),
+    so they're dropped rather than stored."""
     if raw in (None, ""):
         return None
     try:
-        return Decimal(raw)
+        value = Decimal(raw)
     except (InvalidOperation, TypeError):
         return None
+    return value if value >= 0 else None
 
 
 def _int_or_none(raw):
     """Parse reps as a whole number. Reps are never fractional, so a decimal
-    string (e.g. a pasted "2.5") is rounded rather than dropped."""
+    string (e.g. a pasted "2.5") is rounded rather than dropped. Negative reps
+    are invalid (PositiveSmallIntegerField has no DB CHECK on SQLite/Postgres
+    and the ORM skips validators) and are dropped."""
     if raw in (None, ""):
         return None
     try:
-        return int(round(float(raw)))
+        value = int(round(float(raw)))
     except (TypeError, ValueError):
         return None
+    return value if value >= 0 else None
 
 
 @login_required

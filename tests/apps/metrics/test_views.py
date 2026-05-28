@@ -73,6 +73,34 @@ def test_snapshot_create_persists_new_body_comp_fields(alice, client):
 
 
 @pytest.mark.django_db
+def test_snapshot_create_rejects_negative_weight(alice, client):
+    """A negative bodyweight would corrupt BMI and the nutrition BMR/macro math.
+    It's dropped to None → the view's required-weight guard returns 400."""
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    client.force_login(alice)
+    resp = client.post(reverse("metrics:create"), {"weight_kg": "-80"})
+    assert resp.status_code == 400
+    assert not UserMetricSnapshot.objects.filter(owner=alice).exists()
+
+
+@pytest.mark.django_db
+def test_snapshot_create_drops_negative_body_comp(alice, client):
+    """Negative body-fat / muscle % are invalid; stored as None, not negative."""
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    client.force_login(alice)
+    resp = client.post(
+        reverse("metrics:create"),
+        {"weight_kg": "80", "body_fat_pct": "-15", "muscle_pct": "-42"},
+    )
+    assert resp.status_code == 302
+    snap = UserMetricSnapshot.objects.get(owner=alice)
+    assert snap.body_fat_pct is None
+    assert snap.muscle_pct is None
+
+
+@pytest.mark.django_db
 def test_metrics_list_renders_bmi_when_height_set(alice, client):
     from gymapp.apps.metrics.models import UserMetricSnapshot
 
@@ -148,7 +176,7 @@ def test_metrics_list_warns_when_height_missing(alice, client):
     UserMetricSnapshot.objects.create(owner=alice, weight_kg="80.0", measured_at=timezone.now())
     client.force_login(alice)
     resp = client.get(reverse("metrics:list"))
-    assert "Para calcular tu BMI".encode() in resp.content
+    assert b"Para calcular tu BMI" in resp.content
 
 
 @pytest.mark.django_db

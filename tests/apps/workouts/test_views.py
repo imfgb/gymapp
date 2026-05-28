@@ -101,6 +101,29 @@ def test_complete_set_coerces_decimal_reps_to_int(client_alice):
 
 
 @pytest.mark.django_db
+def test_complete_set_drops_negative_weight_and_reps(client_alice):
+    """Negative weight/reps are invalid — they'd produce negative tonnage and
+    bogus PRs. The ORM skips field validators, so the view must drop them."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(
+        sess, exercise=ExerciseFactory(), sets_count=1
+    )
+    set_log = elog.set_logs.first()
+
+    response = client.post(
+        reverse("workouts:complete_set", args=[sess.pk, set_log.pk]),
+        {"weight_kg": "-60", "reps": "-5"},
+    )
+
+    assert response.status_code == 200
+    set_log.refresh_from_db()
+    # Dropped (None) rather than stored negative.
+    assert set_log.weight_kg is None
+    assert set_log.reps is None
+
+
+@pytest.mark.django_db
 def test_session_rows_expose_progress_data_attrs(client_alice):
     """The session page must tag working sets so the live progress counter can
     count them from the DOM without a reload."""

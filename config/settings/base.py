@@ -29,6 +29,10 @@ SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="dev-insecure-do-not-use-in-pr
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
+# Bearer token for the feedback triage API (admin automation). Empty = API
+# disabled (returns 503). Set it on Railway + in local `.env`; never commit it.
+FEEDBACK_API_TOKEN = env.str("FEEDBACK_API_TOKEN", default="")
+
 # ---------------------------------------------------------------------------
 # Apps
 # ---------------------------------------------------------------------------

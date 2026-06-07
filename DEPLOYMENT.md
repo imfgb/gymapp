@@ -10,7 +10,7 @@ Railway dashboard → Settings → Networking.
 - **Web service**: single Railway service built from `Dockerfile`, runs `gunicorn config.wsgi`.
 - **Database**: Railway-managed PostgreSQL 16. `DATABASE_URL` is referenced on the
   web service as `${{Postgres.DATABASE_URL}}` — it is **not** auto-injected across services.
-- **Static**: Whitenoise serves compiled assets directly from the web dyno. No CDN, no S3.
+- **Static**: Whitenoise serves compiled assets directly from the web container. No CDN, no S3.
 - **TLS**: Railway terminates TLS; the app reads `X-Forwarded-Proto` via `SECURE_PROXY_SSL_HEADER`.
 
 No Redis, no worker, no Celery (per decision #10).
@@ -55,20 +55,22 @@ is baked into the Dockerfile.
 
    | Variable | Value |
    |---|---|
-   | `DJANGO_SETTINGS_MODULE` | `config.settings.prod` |
    | `DJANGO_SECRET_KEY` | `python -c "import secrets; print(secrets.token_urlsafe(50))"` (paste output) |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference to the Postgres service — not auto-injected) |
    | `DJANGO_DEBUG` | `false` |
    | `DJANGO_ALLOWED_HOSTS` | `<your-service>.up.railway.app` (Railway shows the domain) |
    | `DJANGO_CSRF_TRUSTED_ORIGINS` | `https://<your-service>.up.railway.app` |
+   | `DJANGO_SUPERUSER_EMAIL` | the admin email (auto-creates the first superuser at boot) |
+   | `DJANGO_SUPERUSER_PASSWORD` | a strong password (never reuse across environments; rotate if exposed) |
    | `SENTRY_DSN` | (optional) paste from <https://sentry.io> project settings |
    | `TIME_ZONE` | `America/Mexico_City` |
    | `LANGUAGE_CODE` | `es-mx` |
 
-5. **Run the release migrations** (Railway runs `Procfile`'s `release:` automatically on each deploy). Watch the deploy logs for `Operations to perform: Apply all migrations:`.
+   (`DJANGO_SETTINGS_MODULE=config.settings.prod` is baked into the Dockerfile — no need to set it here.)
 
-6. **Create the first superuser**.
-   - Railway → Service → ⋮ → **Run command**: `python manage.py createsuperuser`.
-   - Or open a one-shot shell from the Railway dashboard.
+5. **Migrations run automatically at boot.** `start.sh` runs `migrate` in the background after gunicorn starts (see §1a) — no separate release phase. Watch the deploy logs for `Operations to perform: Apply all migrations:`.
+
+6. **The first superuser is auto-created** from `DJANGO_SUPERUSER_EMAIL` + `DJANGO_SUPERUSER_PASSWORD` (set them as env vars; `start.sh` runs `createsuperuser --noinput`). To create one manually instead: Railway → Service → ⋮ → **Run command** → `python manage.py createsuperuser`.
 
 7. **Visit** the public URL → `/auth/login/` → log in → `/admin/` to invite users.
 

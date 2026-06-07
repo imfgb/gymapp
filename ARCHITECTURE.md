@@ -127,12 +127,12 @@ See `CLAUDE.md` §11 and `.claude/AGENTS.md`. The harness is the *development wo
 |---|---|
 | Postgres unreachable | Gunicorn returns 500; Sentry captures; user retries. No queue to drain. |
 | Migration fails at boot | `start.sh` runs `migrate` in the background *after* gunicorn is up (see `DEPLOYMENT.md §1a`), so a failure is logged to Railway but the container keeps serving (possibly with unapplied migrations). Fix forward and redeploy. |
-| Out-of-memory on web | Gunicorn worker restarts (auto). Two workers per dyno gives breathing room. |
+| Out-of-memory on web | Gunicorn worker restarts (auto). Two workers per container gives breathing room. |
 | Static file missing | Whitenoise's manifest storage raises at build time (catches during `collectstatic`), not at request time. |
 
 ## 11. Scaling assumptions
 
-Designed for ≤ ~20 users. A single Railway dyno + the smallest managed Postgres tier comfortably handles this. If we ever cross into hundreds of users, the natural first move is enabling Sentry transactions to find slow queries, then adding indexes / select_related. We don't pre-optimize.
+Designed for ≤ ~20 users. A single Railway service (one container) + the smallest managed Postgres tier comfortably handles this. If we ever cross into hundreds of users, the natural first move is enabling Sentry transactions to find slow queries, then adding indexes / select_related. We don't pre-optimize.
 
 ## 12. Anti-patterns we deliberately avoid
 

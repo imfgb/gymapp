@@ -2,14 +2,39 @@
 
 How gymapp deploys to Railway, plus the Phase 0 verification checklist.
 
+**LIVE on Railway** (free trial credit, not paying). The public URL lives in the
+Railway dashboard → Settings → Networking.
+
 ## 1. Architecture
 
 - **Web service**: single Railway service built from `Dockerfile`, runs `gunicorn config.wsgi`.
-- **Database**: Railway-managed PostgreSQL 16, connected via the auto-injected `DATABASE_URL`.
+- **Database**: Railway-managed PostgreSQL 16. `DATABASE_URL` is referenced on the
+  web service as `${{Postgres.DATABASE_URL}}` — it is **not** auto-injected across services.
 - **Static**: Whitenoise serves compiled assets directly from the web dyno. No CDN, no S3.
 - **TLS**: Railway terminates TLS; the app reads `X-Forwarded-Proto` via `SECURE_PROXY_SSL_HEADER`.
 
 No Redis, no worker, no Celery (per decision #10).
+
+## 1a. Start command — `sh start.sh` (hard-won, the 2026-05-25 deploy saga)
+
+The start command is `sh start.sh` (in `railway.json` and the Dockerfile `CMD`).
+`start.sh` starts **gunicorn immediately** and runs **`migrate` + `createsuperuser`
+(from `DJANGO_SUPERUSER_*`) in the BACKGROUND**. Three reasons it must be this way:
+
+1. **Healthcheck 400** — Railway's healthcheck hits the app with
+   `Host: healthcheck.railway.app`, so `ALLOWED_HOSTS` MUST include `.railway.app`
+   and `CSRF_TRUSTED_ORIGINS` `https://*.railway.app` (done in `prod.py`). Otherwise
+   Django answers 400 → healthcheck fails.
+2. **`migrate` hung at boot** — connecting to Postgres before Railway's private
+   network (`*.railway.internal`, IPv6) is ready means gunicorn never starts →
+   healthcheck fails. Fix: gunicorn first, DB setup backgrounded.
+3. **"Failed to parse start command"** — Railway's startCommand parser rejects
+   shell `&`, `()`, `<`. So the background logic lives in `start.sh`, invoked as the
+   parser-safe `sh start.sh`.
+
+Healthcheck: `healthcheckPath=/auth/login/` (a GET that needs no DB → passes the
+moment gunicorn is up), `healthcheckTimeout=60`. `DJANGO_SETTINGS_MODULE=config.settings.prod`
+is baked into the Dockerfile.
 
 ## 2. First-time setup
 
@@ -49,12 +74,26 @@ No Redis, no worker, no Celery (per decision #10).
 
 ## 3. Ongoing deploys
 
-Push to `main` → Railway auto-builds the Dockerfile → release phase runs `manage.py migrate --noinput` → new container takes traffic with zero downtime (Railway swaps once health check passes).
+Push to `main` → Railway auto-builds the Dockerfile → `start.sh` runs gunicorn
+immediately and backgrounds `migrate` (see §1a) → new container takes traffic once
+the health check passes.
+
+**Triggering a deploy:** GitHub push *should* auto-deploy but has been flaky/laggy.
+Reliable manual trigger: gymapp → Variables → add/delete any variable → "Apply
+change → **Deploy**" (builds the **latest** commit). Do NOT use "Redeploy" — it
+re-runs the SAME (often old) commit.
 
 Hot fixes:
 
 - For an urgent rollback, Railway's **Deployments** tab lets you re-promote any previous successful build.
 - Never edit a migration that's already merged to `main`. Add a *new* migration that supersedes it.
+
+## 3a. Adding users (invite-only)
+
+`/admin/` → Users → Add user (email + password); the Profile auto-creates via the
+`post_save` signal; leave `is_staff` / `is_superuser` OFF. `OwnerScopedAdmin` shows
+the superuser ALL users' data in `/admin/`, while each normal user sees only their
+own data in the app.
 
 ## 4. Custom domain (optional)
 

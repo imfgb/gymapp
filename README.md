@@ -41,6 +41,7 @@ pytest
 
 - **CLAUDE.md** — architectural memory; the most important doc for understanding *why*.
 - **ARCHITECTURE.md** — system design overview.
+- **HISTORY.md** — detailed implementation log + per-feature changelog.
 - **ROADMAP.md** — what's in each phase.
 - **DATABASE.md** — schema by app.
 - **API_DESIGN.md** — HTMX endpoint catalogue.

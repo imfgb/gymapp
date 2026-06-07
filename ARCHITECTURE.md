@@ -48,7 +48,10 @@ Each app in `gymapp/apps/` owns a coherent domain. Cross-app reads go through a 
 | `routines` | planned workouts, weekly schedule | `exercises` (read-only via service) |
 | `workouts` | actual sessions, sets | `exercises`, `routines` (read-only via service); writes `prs` via service |
 | `prs` | personal records | (read-only consumer of workouts via service) |
-| `metrics` | body composition snapshots | `users` |
+| `metrics` | body composition, monthly goals, fatigue/readiness | `users`, `workouts` (read-only via service) |
+| `nutrition` | calorie/macro targets, saved meals, supplements | `users`, `metrics` (read-only via service) |
+| `injuries` | injury log, mobility library | `exercises` (read-only via service) |
+| `feedback` | bug reports | standalone (superuser-read; not owner-scoped) |
 | `dashboard` | read-only landing | all of the above via services |
 | `core` | mixins, owner-scoping | (foundation) |
 
@@ -81,7 +84,7 @@ Located in `gymapp/services/`. Every service subpackage exports a **Protocol** (
 
 ## 5. Frontend architecture
 
-Django templates render HTML. HTMX provides partial-page updates (logging a set, swapping an exercise, ticking the checklist). Alpine.js holds tiny client-side state (rest timer, dropdown open/close). No build step in dev (Tailwind Play CDN); PostCSS pipeline in prod.
+Django templates render HTML. HTMX provides partial-page updates (logging a set, swapping an exercise, ticking the checklist). Alpine.js holds tiny client-side state (rest timer, dropdown open/close). Tailwind is compiled to `static/tailwind.css` (loaded via `{% static %}` in `base.html`) in **both dev and prod** — run `npm run build:css` after changing classes. (Dev originally used the Tailwind Play CDN but switched to compiled CSS for performance.)
 
 - **Mobile-first responsive** with Tailwind utility classes. Desktop adds a left sidebar; mobile collapses to a top bar.
 - **No SPA.** Views return real HTML. Browser back/forward "just works".
@@ -123,7 +126,7 @@ See `CLAUDE.md` §11 and `.claude/AGENTS.md`. The harness is the *development wo
 | Failure | Handling |
 |---|---|
 | Postgres unreachable | Gunicorn returns 500; Sentry captures; user retries. No queue to drain. |
-| Migration failed in release phase | Railway aborts the deploy; previous image keeps serving. We fix and re-push. |
+| Migration fails at boot | `start.sh` runs `migrate` in the background *after* gunicorn is up (see `DEPLOYMENT.md §1a`), so a failure is logged to Railway but the container keeps serving (possibly with unapplied migrations). Fix forward and redeploy. |
 | Out-of-memory on web | Gunicorn worker restarts (auto). Two workers per dyno gives breathing room. |
 | Static file missing | Whitenoise's manifest storage raises at build time (catches during `collectstatic`), not at request time. |
 

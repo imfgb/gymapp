@@ -78,7 +78,7 @@ docs/              # conventions, service_layer, domain_glossary
 | `metrics` | Body composition snapshots, monthly goals, fatigue/readiness inputs. | `UserMetricSnapshot`, `MonthlyGoal`, `ReadinessSnapshot`, `FatigueAdjustment` |
 | `nutrition` | Calorie + macro target, food preferences, user-generated saved meals (daily-scoped), optional supplement tracker (daily reset). | `SavedMeal`, `Supplement` |
 | `injuries` | Rehab/prevention: injury log + avoid-exercise warnings, mobility library + auto-swap. | `Injury`, `MobilityExercise` |
-| `feedback` | In-app bug reporting: floating button → `BugReport`; superuser-only triage at `/feedback/admin/`. Not owner-scoped. | `BugReport` |
+| `feedback` | In-app bug reporting: floating button → `BugReport`; superuser-only triage at `/feedback/admin/` + token-auth triage API (`/feedback/api/bugs/`). Not owner-scoped. | `BugReport` |
 | `dashboard` | Read-only views: today's workout, week split, recent history, PR highlights, progreso charts. | (no models) |
 
 ---
@@ -158,6 +158,8 @@ Three roles (Leader / Implementer / Reviewer) + specialized Migration Writer & T
 **Project skills** (`.claude/skills/<name>/SKILL.md`, invoke with a slash):
 - `/test` — run the pytest suite, target a file/app, repair failures without weakening tests, or delegate new tests to the `test-writer` subagent.
 - `/debug` — reproduce → isolate → minimal fix → regression test → browser-verify (WebKit 390×844). Never claim "fixed" without test-green / screenshot / repro.
+- `/change-approval-orchestrator` — read the **prod** feedback inbox, triage user-reported bugs/ideas, act only with per-item approval.
+- `/auto-bug-fixer` — execute ONE approved feedback item (fix via `/debug` or implement per the working agreement; test; commit+push; never deploy). Needs `FEEDBACK_API_TOKEN` + `PROD_BASE_URL` in `.env`.
 
 ---
 

@@ -29,14 +29,30 @@
             <p class="break-words text-sm font-medium">{% if rex.exercise.id in avoid_ids %}<span title="Lesión activa marca este ejercicio">🚫</span> {% endif %}{{ rex.exercise.name }}</p>
             <p class="text-xs text-slate-500">{{ rex.exercise.equipment.name }}</p>
           </div>
-          <button type="button"
-                  hx-post="{% url 'routines:exercise_delete' routine.id day.id rex.id %}"
-                  hx-target="#day-{{ day.id }}"
-                  hx-swap="outerHTML"
-                  hx-confirm="¿Borrar este ejercicio?"
-                  class="shrink-0 rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
-            ✕
-          </button>
+          <div class="flex shrink-0 items-center gap-1">
+            {% if not forloop.first %}
+              <button type="button" aria-label="Subir ejercicio"
+                      hx-post="{% url 'routines:exercise_move' routine.id day.id rex.id %}"
+                      hx-vals='{"direction": "up"}'
+                      hx-target="#day-{{ day.id }}" hx-swap="outerHTML"
+                      class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">↑</button>
+            {% endif %}
+            {% if not forloop.last %}
+              <button type="button" aria-label="Bajar ejercicio"
+                      hx-post="{% url 'routines:exercise_move' routine.id day.id rex.id %}"
+                      hx-vals='{"direction": "down"}'
+                      hx-target="#day-{{ day.id }}" hx-swap="outerHTML"
+                      class="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50">↓</button>
+            {% endif %}
+            <button type="button"
+                    hx-post="{% url 'routines:exercise_delete' routine.id day.id rex.id %}"
+                    hx-target="#day-{{ day.id }}"
+                    hx-swap="outerHTML"
+                    hx-confirm="¿Borrar este ejercicio?"
+                    class="rounded border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50">
+              ✕
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">

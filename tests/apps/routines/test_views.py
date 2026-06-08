@@ -359,3 +359,51 @@ def test_weekly_split_assign_rest_day_clears(client, alice):
     assert resp.status_code == 302
     split = WeeklySplit.objects.get(owner=alice, weekday=1)
     assert split.routine_day_id is None
+
+
+def _mk_rex(day, slug, **kw):
+    return RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(slug=slug),
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+        **kw,
+    )
+
+
+@pytest.mark.django_db
+def test_exercise_move_reorders_within_day(client, alice):
+    """bug #4: ↑/↓ reorder a RoutineExercise within its day."""
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push", ordering=0)
+    a = _mk_rex(day, "a", ordering=0)
+    _mk_rex(day, "b", ordering=1)
+    c = _mk_rex(day, "c", ordering=2)
+    client.force_login(alice)
+
+    def order():
+        return list(day.exercises.values_list("exercise__slug", flat=True))
+
+    assert order() == ["a", "b", "c"]
+    client.post(reverse("routines:exercise_move", args=[r.id, day.id, c.id]), {"direction": "up"})
+    assert order() == ["a", "c", "b"]
+    # moving the first one up is a no-op
+    client.post(reverse("routines:exercise_move", args=[r.id, day.id, a.id]), {"direction": "up"})
+    assert order() == ["a", "c", "b"]
+    client.post(reverse("routines:exercise_move", args=[r.id, day.id, a.id]), {"direction": "down"})
+    assert order() == ["c", "a", "b"]
+
+
+@pytest.mark.django_db
+def test_exercise_move_renumbers_when_orderings_collide(client, alice):
+    """Legacy rows can all share ordering=0; moving must still reorder them
+    (renumber, not just swap two equal values)."""
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push", ordering=0)
+    _mk_rex(day, "a", ordering=0)
+    b = _mk_rex(day, "b", ordering=0)
+    client.force_login(alice)
+
+    client.post(reverse("routines:exercise_move", args=[r.id, day.id, b.id]), {"direction": "up"})
+    assert list(day.exercises.values_list("exercise__slug", flat=True)) == ["b", "a"]

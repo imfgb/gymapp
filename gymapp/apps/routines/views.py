@@ -347,6 +347,34 @@ def exercise_delete(
     return _render_day_card(request, day)
 
 
+@login_required
+@require_POST
+def exercise_move(
+    request: HttpRequest, routine_id: int, day_id: int, rex_id: int
+) -> HttpResponse:
+    """Reorder a RoutineExercise within its day (bug #4). `direction` = up|down.
+
+    Renumbers all siblings 0..n-1 in the new order, so it works even when legacy
+    rows share the default ordering=0 (swapping two values alone wouldn't move them).
+    """
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
+    day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
+    rex = get_object_or_404(RoutineExercise, pk=rex_id, routine_day=day)
+
+    siblings = list(day.exercises.all())  # ordered by (ordering, id)
+    idx = next((i for i, s in enumerate(siblings) if s.pk == rex.pk), None)
+    direction = request.POST.get("direction")
+    if idx is not None:
+        if direction == "up" and idx > 0:
+            siblings[idx - 1], siblings[idx] = siblings[idx], siblings[idx - 1]
+        elif direction == "down" and idx < len(siblings) - 1:
+            siblings[idx + 1], siblings[idx] = siblings[idx], siblings[idx + 1]
+        for position, sibling in enumerate(siblings):
+            sibling.ordering = position
+        RoutineExercise.objects.bulk_update(siblings, ["ordering"])
+    return _render_day_card(request, day)
+
+
 # ---------------------------------------------------------------------------
 # Weekly Split
 # ---------------------------------------------------------------------------

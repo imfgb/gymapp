@@ -29,7 +29,7 @@ Python 3.12 · Django 5.2 (LTS) · PostgreSQL 16 (Railway prod; docker-compose /
 | 3 | Primary device | Desktop-first; responsive Tailwind, mobile-first breakpoints, no PWA/offline. |
 | 4 | Frontend stack | Django templates + HTMX + Alpine.js + Tailwind. |
 | 5 | Auth | Invite-only via `/admin`. Django built-in auth only (no allauth). |
-| 6 | Units | Metric only (kg, cm). |
+| 6 | Units | Metric base (cm; bodyweight kg). **Lifted weight is kg-canonical but displays kg or lb per exercise** (`Exercise.weight_unit`; cable/machine default lb) — see ADR-027. |
 | 7 | Deployment | Railway (web + managed Postgres, GitHub→main auto-deploy). |
 | 8 | Language | Spanish UI (`es-mx`), English domain data (exercise names, muscle groups). No i18n machinery. |
 | 9 | Exercise data | Curated seed (~80–120 exercises) + per-user custom exercises. |
@@ -71,7 +71,7 @@ docs/              # conventions, service_layer, domain_glossary
 |---|---|---|
 | `core` | Cross-cutting mixins: `TimestampedModel`, `OwnerScopedQuerySet`, `OwnedMixin`, `OwnerScopedAdmin`. `context_processors.page_hint` (per-page banners). | (no models) |
 | `users` | Custom User (email-as-username), Profile (training prefs, height, DOB, sex, activity level, `onboarded_at`, `food_preferences`), first-login password change, `OnboardingMiddleware`. | `User`, `Profile` |
-| `exercises` | Curated + custom exercise catalogue (primary/secondary muscle groups, equipment, category). Self-referencing alternatives M2M. | `MuscleGroup`, `Equipment`, `Exercise` (nullable `owner` → null = global), `ExerciseAlternative` |
+| `exercises` | Curated + custom exercise catalogue (primary/secondary muscle groups, equipment, category, `weight_unit` kg/lb). Self-referencing alternatives M2M. | `MuscleGroup`, `Equipment`, `Exercise` (nullable `owner` → null = global), `ExerciseAlternative` |
 | `routines` | Workout templates, weekly schedule, skip-days, 6-week training blocks. | `Routine`, `RoutineDay`, `RoutineExercise`, `WeeklySplit`, `SkippedDay`, `TrainingBlock` |
 | `workouts` | Actual training sessions + set-by-set logs. Drives the interactive checklist. | `WorkoutSession`, `ExerciseLog`, `SetLog` |
 | `prs` | Personal records per exercise per rep-count. Auto-detected from finished `SetLog`s + manual overrides. | `PersonalRecord` |
@@ -100,6 +100,7 @@ Located in `gymapp/services/`. **No view ever calls another app's model directly
 | `goals` | `monthly_goal_progress` → per-target `GoalMetric` bars (sessions / bodyweight, baseline-relative). |
 | `fatigue` | `compute_muscle_fatigue` (per-muscle exponential decay) + `daily_advice`. Deterministic, no jobs. |
 | `rehab` | `avoided_exercise_ids` / `warnings_for_exercise`, `mobility_for_user`, `suggested_swap`. |
+| `units` | `to_kg` / `to_display` / `label` — kg↔lb conversion for per-exercise weight display (ADR-027). kg is canonical. |
 
 ---
 
@@ -132,7 +133,7 @@ Project lives at `~/gymapp/`. `.env` → SQLite for quick UI testing (`DATABASE_
 - **Workouts are append-only logical history.** Editing a past `SetLog` weight is allowed; deleting a session with `SetLog`s requires UI confirmation.
 - **PRs are derived, not authoritative.** Recomputed from `SetLog` history when a session finishes. Manual overrides exist for pre-app entries.
 - **Routines describe intent; sessions describe reality.** A `RoutineExercise` is the plan; `ExerciseLog` + `SetLog`s are what happened. They can diverge — that's the point of tracking.
-- **Metric units only.** All weights `kg`, heights `cm`. No conversion code; forms reject lb.
+- **Weight is stored in kg; heights in cm.** **Lifted** weight displays in the exercise's unit (kg or lb — `Exercise.weight_unit`, blank = auto by equipment); conversion lives only at the input/display boundary via `gymapp/services/units.py` + the `in_unit` template filter (ADR-027). Bodyweight stays kg. Negative numeric input is rejected.
 - **Spanish UI surface; English data** (exercise names, muscle/equipment slugs).
 
 ---

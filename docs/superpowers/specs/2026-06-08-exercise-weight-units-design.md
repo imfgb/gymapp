@@ -32,7 +32,7 @@ and stays kg.
 
 ### A — model + units helper
 
-- `Exercise.weight_unit`: `CharField(max_length=2, choices=WeightUnit.choices, null=True, blank=True)`. `WeightUnit` = {`kg`, `lb`}. Migration adds the nullable column (no backfill).
+- `Exercise.weight_unit`: `CharField(max_length=2, choices=WeightUnit.choices, blank=True, default="")`. `WeightUnit` = {`kg`, `lb`}; **blank `""` = auto** (ruff DJ001 discourages `null` on string fields, and `""` is a clean tri-state sentinel). Migration adds the column (no backfill).
 - `Exercise.effective_weight_unit` (property): `self.weight_unit or ("lb" if self.equipment.slug in {"cable","machine"} else "kg")`.
 - `gymapp/services/units.py` (deterministic, pure):
   - `KG_PER_LB`, `LB_PER_KG` constants.

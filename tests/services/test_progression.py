@@ -8,13 +8,29 @@ import pytest
 
 from gymapp.apps.routines.models import Routine, RoutineDay, RoutineExercise
 from gymapp.apps.users.models import TrainingStyle
+from gymapp.services import units
 from gymapp.services import workouts as workouts_service
 from gymapp.services.progression import (
     DeterministicDoubleProgression,
     DeterministicLinearProgression,
+    _weight_increment,
     recommend_next,
 )
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
+
+
+@pytest.mark.django_db
+def test_weight_increment_lb_exercise_uses_five_pounds():
+    """feedback #8: lb exercises advance by +5 lb (in kg); kg exercises unchanged."""
+    from gymapp.apps.exercises.models import Equipment
+
+    cable = Equipment.objects.get(slug="cable")  # auto lb
+    barbell = Equipment.objects.get(slug="barbell")  # kg
+    lb_ex = ExerciseFactory(slug="cable-press", equipment=cable)
+    kg_ex = ExerciseFactory(slug="bb-row", equipment=barbell, category="compound")
+
+    assert _weight_increment(lb_ex, TrainingStyle.POWERLIFTING) == units.to_kg(Decimal("5"), "lb")
+    assert _weight_increment(kg_ex, TrainingStyle.POWERLIFTING) == Decimal("5.0")
 
 # ---------------------------------------------------------------------------
 # Helpers

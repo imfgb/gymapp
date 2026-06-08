@@ -128,9 +128,15 @@ class DeterministicDoubleProgression:
 
 
 def _weight_increment(exercise, training_style: str) -> Decimal:
-    """Smaller plates for isolation exercises; bigger jumps for powerlifting."""
-    from gymapp.apps.users.models import TrainingStyle
+    """Smaller plates for isolation exercises; bigger jumps for powerlifting.
 
+    lb exercises (cable/machine stacks) advance by +5 lb so the displayed jump is
+    a clean 5, regardless of training style (#8)."""
+    from gymapp.apps.users.models import TrainingStyle
+    from gymapp.services import units
+
+    if exercise.effective_weight_unit == units.LB:
+        return units.to_kg(Decimal("5"), units.LB)  # +5 lb expressed in kg
     if training_style == TrainingStyle.POWERLIFTING:
         return Decimal("2.5") if exercise.category == "isolation" else Decimal("5.0")
     return Decimal("1.25") if exercise.category == "isolation" else Decimal("2.5")

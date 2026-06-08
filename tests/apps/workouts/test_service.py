@@ -424,3 +424,23 @@ def test_start_session_no_auto_warmup_for_dumbbell(alice):
 
     elog = session.exercise_logs.get(exercise=db_ex)
     assert elog.set_logs.filter(is_warmup=True).count() == 0
+
+
+@pytest.mark.django_db
+def test_warmups_for_lb_exercise_snap_to_clean_pounds(alice):
+    """feedback #8: a cable (lb) exercise's warm-ups snap to 5-lb steps, so they
+    read as round pounds (40/60/80) once converted for display."""
+    from gymapp.apps.exercises.models import Equipment
+    from gymapp.services import units
+
+    cable = Equipment.objects.get(slug="cable")
+    ex = ExerciseFactory(slug="cable-row-wu", equipment=cable)  # auto lb
+    session = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(session, exercise=ex, sets_count=1)
+    workouts_service.complete_set(
+        elog.set_logs.first(), weight_kg=units.to_kg(Decimal("100"), "lb"), reps=8
+    )
+
+    warmups = workouts_service.add_warmups_to_exercise(elog)
+    displayed_lb = [units.to_display(w.weight_kg, "lb") for w in warmups]
+    assert displayed_lb == [Decimal("40.0"), Decimal("60.0"), Decimal("80.0")]

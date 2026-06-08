@@ -237,6 +237,12 @@ def add_warmups_to_exercise(exercise_log: ExerciseLog) -> list[SetLog]:
     increment, bar = plate_loaded.get(
         exercise_log.exercise.equipment.slug, (Decimal("2.5"), Decimal("0"))
     )
+    # lb exercises (cable/machine stacks) snap to 5-lb steps so warm-ups read as
+    # clean pounds once converted for display (#8).
+    from gymapp.services import units
+
+    if exercise_log.exercise.effective_weight_unit == units.LB:
+        increment, bar = units.to_kg(Decimal("5"), units.LB), Decimal("0")
     scheme = warmup_scheme(top_weight, bar_weight=bar, increment=increment)
     created: list[SetLog] = []
     for idx, (weight, reps) in enumerate(scheme):

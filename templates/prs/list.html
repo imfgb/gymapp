@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load weight_units l10n %}
 {% block title %}PRs · Smart Fit Altama{% endblock %}
 
 {% block content %}
@@ -33,7 +34,7 @@
             {% for pr in prs %}
               <tr class="border-t border-slate-100">
                 <td class="px-4 py-1 tabular-nums">{{ pr.reps }}</td>
-                <td class="whitespace-nowrap px-4 py-1 tabular-nums">{{ pr.weight_kg }} kg</td>
+                <td class="whitespace-nowrap px-4 py-1 tabular-nums">{{ pr.weight_kg|in_unit:pr.exercise|unlocalize }} {{ pr.exercise|weight_unit_label }}</td>
                 <td class="whitespace-nowrap px-4 py-1 text-slate-500">{{ pr.achieved_at|date:"d M Y" }}</td>
                 <td class="whitespace-nowrap px-4 py-1 text-xs text-slate-500">{{ pr.get_source_display }}</td>
               </tr>

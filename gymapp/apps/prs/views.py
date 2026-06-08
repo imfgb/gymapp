@@ -12,6 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from gymapp.apps.exercises.models import Exercise
 from gymapp.apps.prs.models import PersonalRecord, PRSource
+from gymapp.services import units
 
 
 @login_required
@@ -42,7 +43,7 @@ def pr_edit(request: HttpRequest, pr_id: int) -> HttpResponse:
     pr = get_object_or_404(PersonalRecord.objects.for_user(request.user), pk=pr_id)
     if request.method == "POST":
         try:
-            pr.weight_kg = Decimal(request.POST["weight_kg"])
+            pr.weight_kg = units.to_kg(Decimal(request.POST["weight_kg"]), pr.exercise.effective_weight_unit)
             pr.reps = int(request.POST["reps"])
         except (KeyError, ValueError, InvalidOperation):
             return HttpResponseBadRequest("Invalid weight/reps")
@@ -59,7 +60,7 @@ def pr_create(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         try:
             exercise = Exercise.objects.visible_to(request.user).get(slug=request.POST["exercise"])
-            weight_kg = Decimal(request.POST["weight_kg"])
+            weight_kg = units.to_kg(Decimal(request.POST["weight_kg"]), exercise.effective_weight_unit)
             reps = int(request.POST["reps"])
         except (KeyError, ValueError, InvalidOperation, Exercise.DoesNotExist):
             return HttpResponseBadRequest("Invalid input")

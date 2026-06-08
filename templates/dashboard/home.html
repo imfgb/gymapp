@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load weight_units l10n %}
 {% block title %}Inicio · Smart Fit Altama{% endblock %}
 
 {% block content %}
@@ -218,7 +219,7 @@
         {% for pr in recent_prs %}
           <li>
             <a href="{% url 'prs:detail' pr.exercise.slug %}" class="hover:underline">{{ pr.exercise.name }}</a>
-            <span class="ml-1 tabular-nums">{{ pr.weight_kg }}kg × {{ pr.reps }}</span>
+            <span class="ml-1 tabular-nums">{{ pr.weight_kg|in_unit:pr.exercise|unlocalize }}{{ pr.exercise|weight_unit_label }} × {{ pr.reps }}</span>
             <span class="ml-1 text-xs text-slate-400">{{ pr.achieved_at|date:"d M" }}</span>
           </li>
         {% endfor %}

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 
+from gymapp.apps.exercises.models import Equipment
 from gymapp.apps.workouts.models import WorkoutSession, WorkoutStatus
 from gymapp.services import workouts as workouts_service
 from tests.factories import EquipmentFactory, ExerciseFactory, MuscleGroupFactory, UserFactory
@@ -77,6 +80,24 @@ def test_session_page_has_no_leaked_template_comments(client_alice):
 
     assert response.status_code == 200
     assert b"{#" not in response.content
+
+
+@pytest.mark.django_db
+def test_complete_set_converts_lb_input_to_kg(client_alice):
+    """feedback #8: a cable exercise is in lb; the posted value (lb) is stored as kg."""
+    client, alice = client_alice
+    cable = Equipment.objects.get(slug="cable")
+    ex = ExerciseFactory(equipment=cable)  # null weight_unit -> auto lb
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=ex, sets_count=1)
+    set_log = elog.set_logs.first()
+
+    client.post(
+        reverse("workouts:complete_set", args=[sess.pk, set_log.pk]),
+        {"weight_kg": "100", "reps": "8"},  # 100 lb
+    )
+    set_log.refresh_from_db()
+    assert set_log.weight_kg == Decimal("45.36")  # 100 lb in kg
 
 
 @pytest.mark.django_db

@@ -3,19 +3,24 @@
 
 {% block content %}
 <h1 class="mb-4 text-2xl font-semibold">Agregar PR manual</h1>
-<form method="post" class="max-w-sm space-y-4">
+{# `unit` tracks the selected exercise's weight unit so the Peso label matches #}
+{# (the value is converted to kg server-side on submit). #}
+<form method="post" class="max-w-sm space-y-4"
+      x-data="{ unit: 'kg' }"
+      x-init="unit = $refs.exsel.selectedOptions[0]?.dataset.unit || 'kg'">
   {% csrf_token %}
   <label class="block">
     <span class="text-sm text-slate-700">Ejercicio</span>
-    <select name="exercise" required
+    <select name="exercise" required x-ref="exsel"
+            @change="unit = $event.target.selectedOptions[0].dataset.unit"
             class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
       {% for ex in exercises %}
-        <option value="{{ ex.slug }}">{{ ex.name }}</option>
+        <option value="{{ ex.slug }}" data-unit="{{ ex.effective_weight_unit }}">{{ ex.name }}</option>
       {% endfor %}
     </select>
   </label>
   <label class="block">
-    <span class="text-sm text-slate-700">Peso (kg)</span>
+    <span class="text-sm text-slate-700">Peso (<span x-text="unit">kg</span>)</span>
     <input type="number" name="weight_kg" step="0.5" min="0" required
            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
   </label>

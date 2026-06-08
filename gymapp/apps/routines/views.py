@@ -27,6 +27,7 @@ from gymapp.apps.routines.models import (
     WeeklySplit,
 )
 from gymapp.apps.users.models import TrainingStyle
+from gymapp.services import units
 from gymapp.services.coaching.blocks import BLOCK_LENGTH_WEEKS, block_status
 from gymapp.services.routine_generator import (
     PRESET_LABELS,
@@ -319,14 +320,21 @@ def exercise_update(
     """HTMX: edit target_sets/reps/weight/rest_seconds of one RoutineExercise."""
     routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
     day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
-    rex = get_object_or_404(RoutineExercise, pk=rex_id, routine_day=day)
+    rex = get_object_or_404(
+        RoutineExercise.objects.select_related("exercise__equipment"), pk=rex_id, routine_day=day
+    )
 
     rex.target_sets = max(1, _int_or_default(request.POST.get("target_sets"), rex.target_sets))
     lo = max(1, _int_or_default(request.POST.get("target_reps_low"), rex.target_reps_low))
     hi = max(lo, _int_or_default(request.POST.get("target_reps_high"), rex.target_reps_high))
     rex.target_reps_low = lo
     rex.target_reps_high = hi
-    rex.target_weight_kg = _decimal_or_none(request.POST.get("target_weight_kg"))
+    target_weight = _decimal_or_none(request.POST.get("target_weight_kg"))
+    rex.target_weight_kg = (
+        units.to_kg(target_weight, rex.exercise.effective_weight_unit)
+        if target_weight is not None
+        else None
+    )
     rest = request.POST.get("rest_seconds")
     parsed_rest = _int_or_default(rest, None) if rest else None
     rex.rest_seconds = max(0, parsed_rest) if parsed_rest is not None else None

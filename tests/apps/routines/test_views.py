@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 
 import pytest
 from django.urls import reverse
 
-from gymapp.apps.exercises.models import Exercise
+from gymapp.apps.exercises.models import Equipment, Exercise
 from gymapp.apps.routines.models import Routine, RoutineDay, RoutineExercise, WeeklySplit
 from tests.factories import EquipmentFactory, ExerciseFactory, UserFactory
 
@@ -393,6 +394,39 @@ def test_exercise_move_reorders_within_day(client, alice):
     assert order() == ["a", "c", "b"]
     client.post(reverse("routines:exercise_move", args=[r.id, day.id, a.id]), {"direction": "down"})
     assert order() == ["c", "a", "b"]
+
+
+@pytest.mark.django_db
+def test_exercise_update_converts_lb_to_kg_and_day_card_shows_lb(client, alice):
+    """feedback #8: cable exercise → target weight entered in lb, stored kg, shown lb."""
+    cable = Equipment.objects.get(slug="cable")
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Pull", ordering=0)
+    rex = RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(slug="cable-row", equipment=cable),
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+    )
+    client.force_login(alice)
+    client.post(
+        reverse("routines:exercise_update", args=[r.id, day.id, rex.id]),
+        {
+            "target_sets": "3",
+            "target_reps_low": "8",
+            "target_reps_high": "12",
+            "target_weight_kg": "100",  # lb
+            "rest_seconds": "",
+        },
+    )
+    rex.refresh_from_db()
+    assert rex.target_weight_kg == Decimal("45.36")  # stored in kg
+
+    content = client.get(reverse("routines:detail", args=[r.id])).content.decode()
+    assert "Peso (lb)" in content
+    assert 'value="100.0"' in content  # shown back in lb
 
 
 @pytest.mark.django_db

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load l10n %}
+{% load l10n weight_units %}
 {% block title %}Editar PR · Smart Fit Altama{% endblock %}
 
 {% block content %}
@@ -7,9 +7,9 @@
 <form method="post" class="max-w-sm space-y-4">
   {% csrf_token %}
   <label class="block">
-    <span class="text-sm text-slate-700">Peso (kg)</span>
+    <span class="text-sm text-slate-700">Peso ({{ pr.exercise|weight_unit_label }})</span>
     <input type="number" name="weight_kg" step="0.5" min="0" required
-           value="{{ pr.weight_kg|unlocalize }}"
+           value="{{ pr.weight_kg|in_unit:pr.exercise|unlocalize }}"
            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
   </label>
   <label class="block">

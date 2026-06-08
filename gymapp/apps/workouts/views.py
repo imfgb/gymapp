@@ -27,6 +27,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from gymapp.apps.routines.models import RoutineDay, WeeklySplit
 from gymapp.apps.workouts.models import ExerciseLog, SetLog, WorkoutSession, WorkoutStatus
+from gymapp.services import units
 from gymapp.services import workouts as workouts_service
 
 
@@ -55,6 +56,14 @@ def _int_or_none(raw):
     except (TypeError, ValueError):
         return None
     return value if value >= 0 else None
+
+
+def _weight_to_kg(raw, exercise):
+    """Parse a posted weight (in the exercise's display unit) into canonical kg."""
+    value = _decimal_or_none(raw)
+    if value is None:
+        return None
+    return units.to_kg(value, exercise.effective_weight_unit)
 
 
 @login_required
@@ -149,10 +158,14 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
 @require_POST
 def complete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
     sess = _require_active_session(request.user, session_id)
-    set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
+    set_log = get_object_or_404(
+        SetLog.objects.select_related("exercise_log__exercise__equipment"),
+        pk=set_id,
+        exercise_log__session=sess,
+    )
     set_log = workouts_service.complete_set(
         set_log,
-        weight_kg=_decimal_or_none(request.POST.get("weight_kg")),
+        weight_kg=_weight_to_kg(request.POST.get("weight_kg"), set_log.exercise_log.exercise),
         reps=_int_or_none(request.POST.get("reps")),
         rpe=_decimal_or_none(request.POST.get("rpe")),
     )
@@ -172,10 +185,14 @@ def complete_set_view(request: HttpRequest, session_id: int, set_id: int) -> Htt
 @require_POST
 def update_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
     sess = _require_active_session(request.user, session_id)
-    set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
+    set_log = get_object_or_404(
+        SetLog.objects.select_related("exercise_log__exercise__equipment"),
+        pk=set_id,
+        exercise_log__session=sess,
+    )
     set_log = workouts_service.update_set_values(
         set_log,
-        weight_kg=_decimal_or_none(request.POST.get("weight_kg")),
+        weight_kg=_weight_to_kg(request.POST.get("weight_kg"), set_log.exercise_log.exercise),
         reps=_int_or_none(request.POST.get("reps")),
         rpe=_decimal_or_none(request.POST.get("rpe")),
     )

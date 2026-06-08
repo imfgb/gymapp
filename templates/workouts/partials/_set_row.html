@@ -1,4 +1,4 @@
-{% load l10n %}<form id="setlog-{{ set_log.id }}"
+{% load l10n weight_units %}<form id="setlog-{{ set_log.id }}"
       class="flex flex-wrap items-center gap-2 px-4 py-2 {% if set_log.is_complete %}bg-emerald-50/40{% endif %}"
       data-working="{% if set_log.is_warmup %}0{% else %}1{% endif %}"
       data-complete="{% if set_log.is_complete %}1{% else %}0{% endif %}"
@@ -12,10 +12,10 @@
   <label class="flex items-center gap-1 text-xs text-slate-500">
     <span class="sr-only">Peso</span>
     <input type="number" name="weight_kg" inputmode="decimal" step="0.5" min="0"
-           value="{{ set_log.weight_kg|default_if_none:''|unlocalize }}"
+           value="{{ set_log.weight_kg|in_unit:set_log.exercise_log.exercise|default_if_none:''|unlocalize }}"
            {% if set_log.is_complete or not session.is_active %}readonly{% endif %}
            class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
-    <span class="text-xs text-slate-500">kg</span>
+    <span class="text-xs text-slate-500">{{ set_log.exercise_log.exercise|weight_unit_label }}</span>
   </label>
 
   <span class="text-slate-400">×</span>

@@ -295,6 +295,7 @@ def exercise_add_custom(request: HttpRequest, routine_id: int, day_id: int) -> H
             primary_muscle_slugs=[
                 s for s in request.POST.getlist("primary_muscles") if s.strip()
             ],
+            weight_unit=request.POST.get("weight_unit", ""),
         )
     except ValueError as exc:
         return HttpResponseBadRequest(str(exc))

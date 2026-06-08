@@ -183,6 +183,7 @@ def add_custom_exercise_and_use(
     equipment_slug: str,
     primary_muscle_slugs: list[str] | None = None,
     sets_count: int = DEFAULT_SETS_ON_ADD,
+    weight_unit: str = "",
 ) -> tuple[Exercise, ExerciseLog]:
     """Create a per-user custom Exercise (owner=session.owner) and immediately
     add it to the session. Useful when the user types a name we don't have.
@@ -197,6 +198,7 @@ def add_custom_exercise_and_use(
         name=name,
         equipment_slug=equipment_slug,
         primary_muscle_slugs=primary_muscle_slugs,
+        weight_unit=weight_unit,
     )
     elog = add_exercise_to_session(session, exercise=exercise, sets_count=sets_count)
     return exercise, elog

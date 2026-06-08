@@ -15,8 +15,32 @@ from gymapp.apps.exercises.models import Equipment, Exercise, ExerciseAlternativ
 from gymapp.services.exercise_library import (
     DeterministicExerciseLibrary,
     apply_seed,
+    create_custom_exercise,
     load_seed,
 )
+from tests.factories import UserFactory
+
+
+@pytest.mark.django_db
+def test_create_custom_exercise_weight_unit(db):
+    """feedback #8: the create form's unit choice (kg/lb/auto) is honoured; a bogus
+    value falls back to auto (blank)."""
+    user = UserFactory(email="cu.unit@example.com")
+    # the autouse fixture in this module wipes the catalogue, so seed what we need
+    Equipment.objects.create(slug="cable", name="Cable")
+    Equipment.objects.create(slug="barbell", name="Barbell")
+
+    lb = create_custom_exercise(user, name="My Cable Fly", equipment_slug="cable", weight_unit="lb")
+    assert lb.weight_unit == "lb"
+
+    auto = create_custom_exercise(user, name="Auto Cable", equipment_slug="cable", weight_unit="")
+    assert auto.weight_unit == ""  # blank = auto
+    assert auto.effective_weight_unit == "lb"  # cable → lb
+
+    bogus = create_custom_exercise(
+        user, name="Weird Unit", equipment_slug="barbell", weight_unit="stone"
+    )
+    assert bogus.weight_unit == ""  # unknown value → auto
 
 
 @pytest.fixture(autouse=True)

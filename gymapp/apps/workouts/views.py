@@ -347,6 +347,7 @@ def add_custom_exercise_view(request: HttpRequest, session_id: int) -> HttpRespo
             equipment_slug=equipment_slug,
             primary_muscle_slugs=primary_muscle_slugs,
             sets_count=sets_count,
+            weight_unit=request.POST.get("weight_unit", ""),
         )
     except ValueError as exc:
         return HttpResponseBadRequest(str(exc))

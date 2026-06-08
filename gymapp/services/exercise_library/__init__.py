@@ -18,10 +18,15 @@ from .loader import apply_seed, load_seed, lookup_alternatives  # noqa: F401
 
 
 @transaction.atomic
-def create_custom_exercise(owner, *, name, equipment_slug, primary_muscle_slugs=None):
+def create_custom_exercise(
+    owner, *, name, equipment_slug, primary_muscle_slugs=None, weight_unit=""
+):
     """Create a per-user custom Exercise (owner-scoped, so it becomes searchable
-    in that user's pickers). Raises ValueError on bad input or a duplicate."""
-    from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup
+    in that user's pickers). Raises ValueError on bad input or a duplicate.
+
+    `weight_unit` is "" (auto by equipment), "kg" or "lb" (#8); anything else is
+    treated as auto."""
+    from gymapp.apps.exercises.models import Equipment, Exercise, MuscleGroup, WeightUnit
 
     name = (name or "").strip()
     if not name:
@@ -36,8 +41,10 @@ def create_custom_exercise(owner, *, name, equipment_slug, primary_muscle_slugs=
     if Exercise.objects.filter(owner=owner, slug=slug).exists():
         raise ValueError(f"Ya tienes un ejercicio personalizado llamado '{name}'.")
 
+    unit = weight_unit if weight_unit in WeightUnit.values else ""
     exercise = Exercise.objects.create(
-        owner=owner, slug=slug, name=name, equipment=equipment, category="compound"
+        owner=owner, slug=slug, name=name, equipment=equipment, category="compound",
+        weight_unit=unit,
     )
     if primary_muscle_slugs:
         exercise.primary_muscles.set(MuscleGroup.objects.filter(slug__in=primary_muscle_slugs))

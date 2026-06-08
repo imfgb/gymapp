@@ -19,6 +19,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -147,7 +148,7 @@ def session(request: HttpRequest, session_id: int) -> HttpResponse:
 @login_required
 @require_POST
 def complete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
-    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    sess = _require_active_session(request.user, session_id)
     set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
     set_log = workouts_service.complete_set(
         set_log,
@@ -170,7 +171,7 @@ def complete_set_view(request: HttpRequest, session_id: int, set_id: int) -> Htt
 @login_required
 @require_POST
 def update_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
-    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    sess = _require_active_session(request.user, session_id)
     set_log = get_object_or_404(SetLog, pk=set_id, exercise_log__session=sess)
     set_log = workouts_service.update_set_values(
         set_log,
@@ -211,7 +212,7 @@ def swap_options_view(request: HttpRequest, session_id: int, elog_id: int) -> Ht
 def swap_exercise_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
     from gymapp.apps.exercises.models import Exercise
 
-    sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
+    sess = _require_active_session(request.user, session_id)
     elog = get_object_or_404(ExerciseLog, pk=elog_id, session=sess)
 
     new_slug = request.POST.get("to_slug")
@@ -258,9 +259,14 @@ def history(request: HttpRequest) -> HttpResponse:
 
 
 def _require_active_session(user, session_id: int) -> WorkoutSession:
+    """Load an owned session and refuse if it's finished.
+
+    A finished session is view-only (bug #10): completing/editing/swapping sets
+    or adding exercises is rejected. `PermissionDenied` → a clean 403 (not 500).
+    """
     sess = get_object_or_404(WorkoutSession.objects.for_user(user), pk=session_id)
     if not sess.is_active:
-        raise PermissionError("Session is not in progress.")
+        raise PermissionDenied("Session is finished; it is view-only.")
     return sess
 
 

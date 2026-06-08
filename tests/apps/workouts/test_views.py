@@ -80,6 +80,52 @@ def test_session_page_has_no_leaked_template_comments(client_alice):
 
 
 @pytest.mark.django_db
+def test_finished_session_rejects_mutations(client_alice):
+    """bug #10: a finished session is view-only — completing, editing or swapping
+    a set must be refused server-side (403), not silently applied."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(
+        sess, exercise=ExerciseFactory(), sets_count=1
+    )
+    set_log = elog.set_logs.first()
+    workouts_service.finish_session(sess)
+
+    r_complete = client.post(
+        reverse("workouts:complete_set", args=[sess.pk, set_log.pk]),
+        {"weight_kg": "60", "reps": "8"},
+    )
+    assert r_complete.status_code == 403
+    set_log.refresh_from_db()
+    assert not set_log.is_complete  # nothing was logged
+
+    r_update = client.post(
+        reverse("workouts:update_set", args=[sess.pk, set_log.pk]),
+        {"weight_kg": "70", "reps": "5"},
+    )
+    assert r_update.status_code == 403
+
+    r_swap = client.post(
+        reverse("workouts:swap_exercise", args=[sess.pk, elog.pk]),
+        {"to_slug": "anything"},
+    )
+    assert r_swap.status_code == 403
+
+
+@pytest.mark.django_db
+def test_finished_session_page_is_view_only(client_alice):
+    """The finished session page hides the 'Completar' button (view-only UI)."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    workouts_service.add_exercise_to_session(sess, exercise=ExerciseFactory(), sets_count=1)
+    workouts_service.finish_session(sess)
+
+    content = client.get(reverse("workouts:session", args=[sess.pk])).content.decode()
+    assert "Completar" not in content
+    assert "sin completar" in content
+
+
+@pytest.mark.django_db
 def test_complete_set_coerces_decimal_reps_to_int(client_alice):
     """Reps are whole numbers. A decimal value submitted for reps (e.g. a
     pasted '2.5') must be stored as an int, never as a fraction."""

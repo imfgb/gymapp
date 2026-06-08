@@ -104,6 +104,31 @@ def test_is_global_property():
 
 
 @pytest.mark.django_db
+def test_effective_weight_unit_resolves_from_equipment_when_null():
+    """feedback #8: a null weight_unit auto-resolves — lb for cable/machine, kg else."""
+    from gymapp.apps.exercises.models import Equipment
+
+    cable = Equipment.objects.get(slug="cable")
+    machine = Equipment.objects.get(slug="machine")
+    barbell = Equipment.objects.get(slug="barbell")
+
+    assert ExerciseFactory(slug="c", equipment=cable, weight_unit="").effective_weight_unit == "lb"
+    assert ExerciseFactory(slug="m", equipment=machine, weight_unit="").effective_weight_unit == "lb"
+    assert ExerciseFactory(slug="b", equipment=barbell, weight_unit="").effective_weight_unit == "kg"
+
+
+@pytest.mark.django_db
+def test_effective_weight_unit_respects_explicit_override():
+    from gymapp.apps.exercises.models import Equipment
+
+    cable = Equipment.objects.get(slug="cable")
+    barbell = Equipment.objects.get(slug="barbell")
+    # cable forced to kg, barbell forced to lb
+    assert ExerciseFactory(slug="ck", equipment=cable, weight_unit="kg").effective_weight_unit == "kg"
+    assert ExerciseFactory(slug="bl", equipment=barbell, weight_unit="lb").effective_weight_unit == "lb"
+
+
+@pytest.mark.django_db
 def test_abductors_and_adductors_are_seeded():
     """bug #6: the abductor/adductor machines need these primary muscle groups.
 

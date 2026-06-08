@@ -33,6 +33,16 @@ class ExerciseCategory(models.TextChoices):
     ISOLATION = "isolation", "Isolation"
 
 
+class WeightUnit(models.TextChoices):
+    KG = "kg", "Kilogramos"
+    LB = "lb", "Libras"
+
+
+# Equipment whose weight is conventionally read in pounds (machine stacks /
+# cable towers). Used to resolve a null `Exercise.weight_unit` (feedback #8).
+LB_DEFAULT_EQUIPMENT = frozenset({"cable", "machine"})
+
+
 class MuscleGroup(models.Model):
     slug = models.SlugField(max_length=40, unique=True)
     name = models.CharField(max_length=80)
@@ -94,6 +104,13 @@ class Exercise(TimestampedModel):
     category = models.CharField(
         max_length=12, choices=ExerciseCategory.choices, default=ExerciseCategory.COMPOUND
     )
+    weight_unit = models.CharField(
+        max_length=2,
+        choices=WeightUnit.choices,
+        blank=True,
+        default="",
+        help_text="Blank = auto: lb for cable/machine, kg otherwise (feedback #8).",
+    )
     unilateral = models.BooleanField(default=False)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -130,6 +147,14 @@ class Exercise(TimestampedModel):
     @property
     def is_global(self) -> bool:
         return self.owner_id is None
+
+    @property
+    def effective_weight_unit(self) -> str:
+        """Resolved display unit (feedback #8): explicit override, else auto by
+        equipment (cable/machine → lb, everything else → kg)."""
+        if self.weight_unit:
+            return self.weight_unit
+        return WeightUnit.LB if self.equipment.slug in LB_DEFAULT_EQUIPMENT else WeightUnit.KG
 
 
 class ExerciseAlternative(models.Model):

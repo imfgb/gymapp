@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.urls import reverse
 
@@ -138,6 +140,35 @@ def test_day_add_rejects_duplicate_label(client, alice):
     client.force_login(alice)
     resp = client.post(reverse("routines:day_add", args=[r.id]), data={"label": "Push A"})
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_editor_autosave_does_not_reswap_the_day_card(client, alice):
+    """bug #11: the inline auto-save must NOT re-render the whole day card.
+
+    Re-swapping on every `change` reverted a field the user was mid-editing
+    (e.g. cleared to retype) back to its old value. The auto-save form now
+    saves silently (`hx-swap="none"`).
+    """
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Push A", ordering=0)
+    RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(),
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+    )
+    client.force_login(alice)
+    content = client.get(reverse("routines:detail", args=[r.id])).content.decode()
+
+    # The change-triggered auto-save <form ...> opening tag must swap nothing.
+    match = re.search(r'<form\b[^>]*hx-trigger="change delay:400ms"[^>]*>', content)
+    assert match, "auto-save form not found on the editor page"
+    form_tag = match.group(0)
+    assert 'hx-swap="none"' in form_tag
+    assert "outerHTML" not in form_tag  # would re-render the card and revert edits
 
 
 @pytest.mark.django_db

@@ -101,3 +101,16 @@ def test_is_global_property():
 
     assert glob.is_global is True
     assert custom.is_global is False
+
+
+@pytest.mark.django_db
+def test_abductors_and_adductors_are_seeded():
+    """bug #6: the abductor/adductor machines need these primary muscle groups.
+
+    Created by migration 0003 (and the updated seed YAML for fresh installs).
+    """
+    from gymapp.apps.exercises.models import MuscleGroup
+
+    groups = MuscleGroup.objects.filter(slug__in=["abductors", "adductors"])
+    assert {g.slug for g in groups} == {"abductors", "adductors"}
+    assert all(g.region == "legs" for g in groups)

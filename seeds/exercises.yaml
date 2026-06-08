@@ -29,6 +29,8 @@ muscle_groups:
   - {slug: hamstrings, name: Hamstrings, region: legs}
   - {slug: glutes, name: Glutes, region: legs}
   - {slug: calves, name: Calves, region: legs}
+  - {slug: abductors, name: Abductors, region: legs}
+  - {slug: adductors, name: Adductors, region: legs}
   - {slug: abs, name: Abs, region: core}
   - {slug: obliques, name: Obliques, region: core}
 

@@ -1,6 +1,8 @@
-{# Desktop (md+): left sidebar, always shown. Mobile: top bar + hamburger toggle. #}
+{# Desktop (md+): left sidebar, always shown. Mobile: sticky top bar + hamburger toggle. #}
+{# `sticky top-0` keeps the bar (and hamburger) visible while scrolling on mobile; #}
+{# `md:static` restores the plain full-height sidebar on desktop. #}
 <nav x-data="{ open: false }"
-     class="bg-ink text-slate-100 md:flex md:min-h-screen md:w-56 md:flex-col">
+     class="sticky top-0 z-40 bg-ink text-slate-100 md:static md:flex md:min-h-screen md:w-56 md:flex-col">
   <div class="flex items-center justify-between px-4 py-4 md:block md:py-6">
     <a href="{% url 'dashboard:home' %}"
        class="text-lg font-extrabold uppercase leading-tight tracking-tight text-brand">Smart Fit<br class="hidden md:block"> Altama</a>

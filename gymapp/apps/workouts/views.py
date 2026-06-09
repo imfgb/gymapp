@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
@@ -251,6 +252,19 @@ def finish(request: HttpRequest, session_id: int) -> HttpResponse:
     sess = get_object_or_404(WorkoutSession.objects.for_user(request.user), pk=session_id)
     workouts_service.finish_session(sess)
     # The dashboard's done_today card already confirms completion, so no flash here.
+    return redirect("dashboard:home")
+
+
+@login_required
+@require_POST
+def cancel(request: HttpRequest, session_id: int) -> HttpResponse:
+    """Discard an in-progress session entirely — started by mistake (#5).
+
+    Deletes the session and its logs (no PRs, no history). Only applies while
+    IN_PROGRESS; finished sessions are read-only history."""
+    sess = _require_active_session(request.user, session_id)
+    sess.delete()
+    messages.info(request, "Entrenamiento cancelado.")
     return redirect("dashboard:home")
 
 

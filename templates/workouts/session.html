@@ -49,6 +49,14 @@
         </div>
       </div>
     </div>
+    <form method="post" action="{% url 'workouts:cancel' session.id %}" class="mt-2">
+      {% csrf_token %}
+      <button type="submit"
+              onclick="return confirm('¿Cancelar y borrar este entrenamiento? No se guardará nada.');"
+              class="text-sm text-rose-700 hover:underline">
+        Cancelar entrenamiento
+      </button>
+    </form>
   {% else %}
     <span class="rounded-md bg-slate-200 px-3 py-1 text-sm text-slate-700">
       {{ session.get_status_display }}

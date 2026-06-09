@@ -9,6 +9,7 @@ urlpatterns = [
     path("start/", views.start, name="start"),
     path("<int:session_id>/", views.session, name="session"),
     path("<int:session_id>/finish/", views.finish, name="finish"),
+    path("<int:session_id>/cancel/", views.cancel, name="cancel"),
     # Set-level
     path(
         "<int:session_id>/sets/<int:set_id>/complete/",

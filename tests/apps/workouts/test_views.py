@@ -116,6 +116,33 @@ def test_toggle_unit_flips_exercise_display(client_alice):
 
 
 @pytest.mark.django_db
+def test_cancel_deletes_in_progress_session(client_alice):
+    """feedback #5: cancelling a session started by mistake deletes it + its logs."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    workouts_service.add_exercise_to_session(sess, exercise=ExerciseFactory(), sets_count=2)
+
+    resp = client.post(reverse("workouts:cancel", args=[sess.pk]))
+
+    assert resp.status_code == 302
+    assert resp.url == reverse("dashboard:home")
+    assert not WorkoutSession.objects.filter(pk=sess.pk).exists()
+
+
+@pytest.mark.django_db
+def test_cancel_refuses_finished_session(client_alice):
+    """A finished session is history — it can't be cancelled (only IN_PROGRESS)."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    workouts_service.finish_session(sess)
+
+    resp = client.post(reverse("workouts:cancel", args=[sess.pk]))
+
+    assert resp.status_code == 403
+    assert WorkoutSession.objects.filter(pk=sess.pk).exists()
+
+
+@pytest.mark.django_db
 def test_finished_session_rejects_mutations(client_alice):
     """bug #10: a finished session is view-only — completing, editing or swapping
     a set must be refused server-side (403), not silently applied."""

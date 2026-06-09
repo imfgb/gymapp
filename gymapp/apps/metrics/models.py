@@ -27,9 +27,27 @@ class UserMetricSnapshot(OwnedMixin, TimestampedModel):
         blank=True,
         help_text="Tanita/Omron visceral-fat rating (~1–30).",
     )
+    # Circumference measurements (cm) — all optional. Tape-measure tracking of how
+    # each body part changes over time (feedback #2).
+    chest_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    waist_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    hip_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    arm_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    thigh_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    calf_cm = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     notes = models.CharField(max_length=200, blank=True)
 
     objects = OwnerScopedQuerySet.as_manager()
+
+    # (Spanish label, field name) for the circumference inputs/columns, in order.
+    MEASUREMENT_FIELDS = (
+        ("Pecho", "chest_cm"),
+        ("Cintura", "waist_cm"),
+        ("Cadera", "hip_cm"),
+        ("Brazo", "arm_cm"),
+        ("Muslo", "thigh_cm"),
+        ("Pantorrilla", "calf_cm"),
+    )
 
     class Meta:
         ordering = ["-measured_at"]
@@ -37,6 +55,14 @@ class UserMetricSnapshot(OwnedMixin, TimestampedModel):
     def __str__(self) -> str:
         bf = f" @ {self.body_fat_pct}%" if self.body_fat_pct is not None else ""
         return f"{self.weight_kg}kg{bf} ({self.measured_at:%Y-%m-%d})"
+
+    def measurements(self):
+        """(label, value) pairs for the circumferences that are set."""
+        return [
+            (label, getattr(self, field))
+            for label, field in self.MEASUREMENT_FIELDS
+            if getattr(self, field) is not None
+        ]
 
     def bmi_for(self, height_cm: int | None) -> float | None:
         """BMI = weight / height^2 (m). None if height isn't set."""

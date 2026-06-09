@@ -73,6 +73,36 @@ def test_snapshot_create_persists_new_body_comp_fields(alice, client):
 
 
 @pytest.mark.django_db
+def test_snapshot_stores_and_edits_body_measurements(alice, client):
+    """feedback #2: optional circumference measurements (cm) are saved + editable."""
+    from gymapp.apps.metrics.models import UserMetricSnapshot
+
+    client.force_login(alice)
+    client.post(
+        reverse("metrics:create"),
+        {"weight_kg": "80", "arm_cm": "40.5", "waist_cm": "82", "thigh_cm": "60"},
+    )
+    snap = UserMetricSnapshot.objects.get(owner=alice)
+    assert snap.arm_cm == Decimal("40.5")
+    assert snap.waist_cm == Decimal("82.0")
+    assert snap.thigh_cm == Decimal("60.0")
+    assert snap.chest_cm is None  # left blank
+    # only the filled ones surface in the compact summary
+    labels = [label for label, _ in snap.measurements()]
+    assert labels == ["Cintura", "Brazo", "Muslo"]
+
+    # edit can clear a measurement and add another
+    client.post(
+        reverse("metrics:edit", args=[snap.id]),
+        {"weight_kg": "80", "arm_cm": "41", "chest_cm": "100"},
+    )
+    snap.refresh_from_db()
+    assert snap.arm_cm == Decimal("41.0")
+    assert snap.chest_cm == Decimal("100.0")
+    assert snap.waist_cm is None  # cleared (not in the edit POST)
+
+
+@pytest.mark.django_db
 def test_snapshot_create_rejects_negative_weight(alice, client):
     """A negative bodyweight would corrupt BMI and the nutrition BMR/macro math.
     It's dropped to None → the view's required-weight guard returns 400."""

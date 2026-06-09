@@ -62,6 +62,10 @@ def snapshot_create(request: HttpRequest) -> HttpResponse:
         weight = _decimal_or_none(request.POST.get("weight_kg"))
         if weight is None:
             return HttpResponseBadRequest("weight_kg required")
+        measurements = {
+            field: _decimal_or_none(request.POST.get(field))
+            for _, field in UserMetricSnapshot.MEASUREMENT_FIELDS
+        }
         UserMetricSnapshot.objects.create(
             owner=request.user,
             measured_at=timezone.now(),
@@ -70,9 +74,11 @@ def snapshot_create(request: HttpRequest) -> HttpResponse:
             muscle_pct=_decimal_or_none(request.POST.get("muscle_pct")),
             visceral_fat=_decimal_or_none(request.POST.get("visceral_fat")),
             notes=request.POST.get("notes", "").strip(),
+            **measurements,
         )
         return redirect("metrics:list")
-    return render(request, "metrics/create.html", {})
+    fields = [(label, field, None) for label, field in UserMetricSnapshot.MEASUREMENT_FIELDS]
+    return render(request, "metrics/create.html", {"measurement_fields": fields})
 
 
 @login_required
@@ -86,10 +92,16 @@ def snapshot_edit(request: HttpRequest, snapshot_id: int) -> HttpResponse:
         snap.body_fat_pct = _decimal_or_none(request.POST.get("body_fat_pct"))
         snap.muscle_pct = _decimal_or_none(request.POST.get("muscle_pct"))
         snap.visceral_fat = _decimal_or_none(request.POST.get("visceral_fat"))
+        for _, field in UserMetricSnapshot.MEASUREMENT_FIELDS:
+            setattr(snap, field, _decimal_or_none(request.POST.get(field)))
         snap.notes = request.POST.get("notes", "").strip()
         snap.save()
         return redirect("metrics:list")
-    return render(request, "metrics/edit.html", {"snap": snap})
+    fields = [
+        (label, field, getattr(snap, field))
+        for label, field in UserMetricSnapshot.MEASUREMENT_FIELDS
+    ]
+    return render(request, "metrics/edit.html", {"snap": snap, "measurement_fields": fields})
 
 
 @login_required

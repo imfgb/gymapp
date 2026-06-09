@@ -20,7 +20,7 @@ and stays kg.
 | Scope | **Lifted weight only** (`SetLog`, `RoutineExercise`, `PersonalRecord`). Bodyweight (`UserMetricSnapshot`, `MonthlyGoal.target_bodyweight_kg`) stays kg. |
 | Increments | **lb-sensible.** lb exercises advance +5 lb and warm-ups snap to 5-lb steps; kg exercises keep +2.5/+5/+1.25 and kg plate snapping. |
 | Unit location | A field on **`Exercise`** (it already carries equipment + category). |
-| Null unit | **Auto:** resolve from equipment (`cable`/`machine` → lb, else kg). No data migration for existing rows. |
+| Blank unit | **Auto:** resolve from equipment (`cable` → lb, else kg). Machines default kg (plate-loaded ones use kg discs) and are flipped per exercise via a kg⇄lb toggle — *amended 2026-06-09 after user feedback that hack squat / leg press are kg*. No data migration. |
 | Conversion | 1 kg = 2.20462262 lb. Store kg @ 2 dp. Display lb rounded to 0.5. |
 
 ## Architecture — incremental layers
@@ -33,7 +33,7 @@ and stays kg.
 ### A — model + units helper
 
 - `Exercise.weight_unit`: `CharField(max_length=2, choices=WeightUnit.choices, blank=True, default="")`. `WeightUnit` = {`kg`, `lb`}; **blank `""` = auto** (ruff DJ001 discourages `null` on string fields, and `""` is a clean tri-state sentinel). Migration adds the column (no backfill).
-- `Exercise.effective_weight_unit` (property): `self.weight_unit or ("lb" if self.equipment.slug in {"cable","machine"} else "kg")`.
+- `Exercise.effective_weight_unit` (property): `self.weight_unit or ("lb" if self.equipment.slug in {"cable"} else "kg")`. A kg⇄lb toggle (routine day card + session card) sets `weight_unit` explicitly; shared on the (global) Exercise; no lock (kg-canonical storage makes flipping non-destructive).
 - `gymapp/services/units.py` (deterministic, pure):
   - `KG_PER_LB`, `LB_PER_KG` constants.
   - `to_kg(value: Decimal, unit: str) -> Decimal` — display→kg (kg passthrough; lb÷factor), 2 dp.

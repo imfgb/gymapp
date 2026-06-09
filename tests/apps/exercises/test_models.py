@@ -112,8 +112,10 @@ def test_effective_weight_unit_resolves_from_equipment_when_null():
     machine = Equipment.objects.get(slug="machine")
     barbell = Equipment.objects.get(slug="barbell")
 
+    # Only cable defaults to lb. Machines are mixed (plate-loaded ones are kg),
+    # so machine defaults to kg and the user flips the lb ones per exercise (#8).
     assert ExerciseFactory(slug="c", equipment=cable, weight_unit="").effective_weight_unit == "lb"
-    assert ExerciseFactory(slug="m", equipment=machine, weight_unit="").effective_weight_unit == "lb"
+    assert ExerciseFactory(slug="m", equipment=machine, weight_unit="").effective_weight_unit == "kg"
     assert ExerciseFactory(slug="b", equipment=barbell, weight_unit="").effective_weight_unit == "kg"
 
 

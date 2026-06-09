@@ -27,6 +27,11 @@ def label(unit: str | None) -> str:
     return LB if unit == LB else KG
 
 
+def other_unit(unit: str | None) -> str:
+    """The opposite unit — for the kg⇄lb toggle."""
+    return KG if unit == LB else LB
+
+
 def to_kg(value, unit: str | None) -> Decimal:
     """Convert a user-entered `value` in `unit` to canonical kg (2 dp)."""
     amount = Decimal(value)

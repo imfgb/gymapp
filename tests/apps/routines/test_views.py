@@ -425,7 +425,7 @@ def test_exercise_update_converts_lb_to_kg_and_day_card_shows_lb(client, alice):
     assert rex.target_weight_kg == Decimal("45.36")  # stored in kg
 
     content = client.get(reverse("routines:detail", args=[r.id])).content.decode()
-    assert "Peso (lb)" in content
+    assert ">lb</button>" in content  # unit shown in the kg/lb toggle
     assert 'value="100.0"' in content  # shown back in lb
 
 
@@ -441,3 +441,30 @@ def test_exercise_move_renumbers_when_orderings_collide(client, alice):
 
     client.post(reverse("routines:exercise_move", args=[r.id, day.id, b.id]), {"direction": "up"})
     assert list(day.exercises.values_list("exercise__slug", flat=True)) == ["b", "a"]
+
+
+@pytest.mark.django_db
+def test_exercise_toggle_unit_flips_kg_lb(client, alice):
+    """feedback #8: machines default kg (hack squat / leg press are kg discs); the
+    user can flip an individual exercise to lb and back."""
+    machine = Equipment.objects.get(slug="machine")
+    r = Routine.objects.create(owner=alice, name="R", training_style=alice.profile.training_style)
+    day = RoutineDay.objects.create(routine=r, label="Legs", ordering=0)
+    rex = RoutineExercise.objects.create(
+        routine_day=day,
+        exercise=ExerciseFactory(slug="leg-press-t", equipment=machine),
+        ordering=0,
+        target_sets=3,
+        target_reps_low=8,
+        target_reps_high=12,
+    )
+    assert rex.exercise.effective_weight_unit == "kg"  # machine default is now kg
+    client.force_login(alice)
+
+    client.post(reverse("routines:exercise_toggle_unit", args=[r.id, day.id, rex.id]))
+    rex.exercise.refresh_from_db()
+    assert rex.exercise.weight_unit == "lb"
+
+    client.post(reverse("routines:exercise_toggle_unit", args=[r.id, day.id, rex.id]))
+    rex.exercise.refresh_from_db()
+    assert rex.exercise.weight_unit == "kg"

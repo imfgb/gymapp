@@ -72,7 +72,11 @@
                    class="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">
           </label>
           <label class="text-xs text-slate-500">
-            <span class="block">Peso ({{ rex.exercise|weight_unit_label }})</span>
+            <span class="block">Peso (<button type="button"
+                    hx-post="{% url 'routines:exercise_toggle_unit' routine.id day.id rex.id %}"
+                    hx-target="#day-{{ day.id }}" hx-swap="outerHTML"
+                    title="Cambiar entre kg y lb"
+                    class="font-medium text-slate-700 underline decoration-dotted underline-offset-2 hover:text-slate-900">{{ rex.exercise|weight_unit_label }}</button>)</span>
             <input type="number" name="target_weight_kg" step="0.5" min="0"
                    value="{{ rex.target_weight_kg|in_unit:rex.exercise|default_if_none:''|unlocalize }}"
                    class="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm tabular-nums">

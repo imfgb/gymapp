@@ -1,4 +1,4 @@
-<article id="elog-{{ elog.id }}"
+{% load weight_units %}<article id="elog-{{ elog.id }}"
          class="rounded-lg border border-slate-200 bg-white shadow-sm">
   {% if elog.exercise.id in avoid_ids %}
     <div class="rounded-t-lg border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">
@@ -30,6 +30,14 @@
                 title="Genera series de calentamiento desde tu peso de trabajo"
                 class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
           Calentamiento
+        </button>
+        <button type="button"
+                hx-post="{% url 'workouts:toggle_unit' session.id elog.id %}"
+                hx-target="#elog-{{ elog.id }}"
+                hx-swap="outerHTML"
+                title="Cambiar entre kg y lb"
+                class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+          Unidad: {{ elog.exercise|weight_unit_label }}
         </button>
         <button type="button"
                 hx-get="{% url 'workouts:swap_options' session.id elog.id %}"

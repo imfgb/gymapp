@@ -101,6 +101,21 @@ def test_complete_set_converts_lb_input_to_kg(client_alice):
 
 
 @pytest.mark.django_db
+def test_toggle_unit_flips_exercise_display(client_alice):
+    """feedback #8: a machine exercise (kg default) can be flipped to lb mid-session."""
+    client, alice = client_alice
+    machine = Equipment.objects.get(slug="machine")
+    ex = ExerciseFactory(slug="hack-squat-t", equipment=machine)  # kg default
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=ex, sets_count=1)
+    assert ex.effective_weight_unit == "kg"
+
+    client.post(reverse("workouts:toggle_unit", args=[sess.pk, elog.pk]))
+    ex.refresh_from_db()
+    assert ex.weight_unit == "lb"
+
+
+@pytest.mark.django_db
 def test_finished_session_rejects_mutations(client_alice):
     """bug #10: a finished session is view-only — completing, editing or swapping
     a set must be refused server-side (403), not silently applied."""

@@ -378,6 +378,22 @@ def add_warmups_view(request: HttpRequest, session_id: int, elog_id: int) -> Htt
 
 @login_required
 @require_POST
+def toggle_unit_view(request: HttpRequest, session_id: int, elog_id: int) -> HttpResponse:
+    """HTMX: flip this exercise's weight display between kg and lb (#8). Safe
+    anytime — weight is stored in kg, so only the display/entry unit changes."""
+    sess = _require_active_session(request.user, session_id)
+    elog = get_object_or_404(
+        ExerciseLog.objects.select_related("exercise__equipment"), pk=elog_id, session=sess
+    )
+    exercise = elog.exercise
+    exercise.weight_unit = units.other_unit(exercise.effective_weight_unit)
+    exercise.save(update_fields=["weight_unit"])
+    elog.refresh_from_db()
+    return _render_exercise_card(request, elog)
+
+
+@login_required
+@require_POST
 def delete_set_view(request: HttpRequest, session_id: int, set_id: int) -> HttpResponse:
     """HTMX: delete a SetLog and return the parent card."""
     sess = _require_active_session(request.user, session_id)

@@ -44,6 +44,11 @@ urlpatterns = [
         views.exercise_move,
         name="exercise_move",
     ),
+    path(
+        "<int:routine_id>/days/<int:day_id>/exercises/<int:rex_id>/toggle-unit/",
+        views.exercise_toggle_unit,
+        name="exercise_toggle_unit",
+    ),
     # Weekly split
     path("split/", views.weekly_split, name="weekly_split"),
     path("split/save/", views.weekly_split_save, name="weekly_split_save"),

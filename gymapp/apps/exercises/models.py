@@ -38,9 +38,12 @@ class WeightUnit(models.TextChoices):
     LB = "lb", "Libras"
 
 
-# Equipment whose weight is conventionally read in pounds (machine stacks /
-# cable towers). Used to resolve a null `Exercise.weight_unit` (feedback #8).
-LB_DEFAULT_EQUIPMENT = frozenset({"cable", "machine"})
+# Equipment whose weight is conventionally read in pounds. Only cable (towers
+# are almost always lb). Machines are mixed — plate-loaded ones (hack squat, leg
+# press) are kg discs — so machine defaults to kg and the user flips the lb ones
+# per exercise with the unit toggle (feedback #8). Used to resolve a blank
+# `Exercise.weight_unit`.
+LB_DEFAULT_EQUIPMENT = frozenset({"cable"})
 
 
 class MuscleGroup(models.Model):
@@ -109,7 +112,7 @@ class Exercise(TimestampedModel):
         choices=WeightUnit.choices,
         blank=True,
         default="",
-        help_text="Blank = auto: lb for cable/machine, kg otherwise (feedback #8).",
+        help_text="Blank = auto: lb for cable, kg otherwise. Per-exercise toggle (feedback #8).",
     )
     unilateral = models.BooleanField(default=False)
     owner = models.ForeignKey(

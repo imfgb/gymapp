@@ -384,6 +384,27 @@ def exercise_move(
     return _render_day_card(request, day)
 
 
+@login_required
+@require_POST
+def exercise_toggle_unit(
+    request: HttpRequest, routine_id: int, day_id: int, rex_id: int
+) -> HttpResponse:
+    """Flip this exercise's weight display between kg and lb (#8).
+
+    The unit lives on the (possibly global) Exercise and is shared — the same
+    machine is the same machine for everyone at the gym. Safe to flip anytime:
+    weight is stored in kg, so only the display/entry unit changes."""
+    routine = get_object_or_404(Routine.objects.for_user(request.user), pk=routine_id)
+    day = get_object_or_404(RoutineDay, pk=day_id, routine=routine)
+    rex = get_object_or_404(
+        RoutineExercise.objects.select_related("exercise__equipment"), pk=rex_id, routine_day=day
+    )
+    exercise = rex.exercise
+    exercise.weight_unit = units.other_unit(exercise.effective_weight_unit)
+    exercise.save(update_fields=["weight_unit"])
+    return _render_day_card(request, day)
+
+
 # ---------------------------------------------------------------------------
 # Weekly Split
 # ---------------------------------------------------------------------------

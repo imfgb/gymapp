@@ -29,7 +29,7 @@ Python 3.12 · Django 5.2 (LTS) · PostgreSQL 16 (Railway prod; docker-compose /
 | 3 | Primary device | Desktop-first; responsive Tailwind, mobile-first breakpoints, no PWA/offline. |
 | 4 | Frontend stack | Django templates + HTMX + Alpine.js + Tailwind. |
 | 5 | Auth | Invite-only via `/admin`. Django built-in auth only (no allauth). |
-| 6 | Units | Metric base (cm; bodyweight kg). **Lifted weight is kg-canonical but displays kg or lb per exercise** (`Exercise.weight_unit`; cable/machine default lb) — see ADR-027. |
+| 6 | Units | Metric base (cm; bodyweight kg). **Lifted weight is kg-canonical but displays kg or lb per exercise** (`Exercise.weight_unit`; cable defaults lb, machine kg, both flippable via a per-exercise toggle) — see ADR-027. |
 | 7 | Deployment | Railway (web + managed Postgres, GitHub→main auto-deploy). |
 | 8 | Language | Spanish UI (`es-mx`), English domain data (exercise names, muscle groups). No i18n machinery. |
 | 9 | Exercise data | Curated seed (~80–120 exercises) + per-user custom exercises. |

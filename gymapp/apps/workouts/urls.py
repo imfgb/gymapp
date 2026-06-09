@@ -47,6 +47,11 @@ urlpatterns = [
         name="add_warmups",
     ),
     path(
+        "<int:session_id>/exercises/<int:elog_id>/toggle-unit/",
+        views.toggle_unit_view,
+        name="toggle_unit",
+    ),
+    path(
         "<int:session_id>/exercises/<int:elog_id>/swap-options/",
         views.swap_options_view,
         name="swap_options",

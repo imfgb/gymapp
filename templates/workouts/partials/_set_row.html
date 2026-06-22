@@ -13,7 +13,9 @@
     <span class="sr-only">Peso</span>
     <input type="number" name="weight_kg" inputmode="decimal" step="0.5" min="0"
            value="{{ set_log.weight_kg|in_unit:set_log.exercise_log.exercise|default_if_none:''|unlocalize }}"
-           {% if set_log.is_complete or not session.is_active %}readonly{% endif %}
+           {% if set_log.is_complete or not session.is_active %}readonly{% else %}{# Auto-save edits so a card re-render (delete set / +serie / calentamiento) keeps them — bug #12 #}
+           hx-post="{% url 'workouts:update_set' session.id set_log.id %}"
+           hx-trigger="input changed delay:400ms" hx-include="closest form" hx-swap="none"{% endif %}
            class="w-20 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
     <span class="text-xs text-slate-500">{{ set_log.exercise_log.exercise|weight_unit_label }}</span>
   </label>
@@ -25,7 +27,9 @@
     <input type="number" name="reps" inputmode="numeric" step="1" min="0"
            oninput="const v = this.value.replace(/\D/g, ''); if (v !== this.value) this.value = v"
            value="{{ set_log.reps|default_if_none:'' }}"
-           {% if set_log.is_complete or not session.is_active %}readonly{% endif %}
+           {% if set_log.is_complete or not session.is_active %}readonly{% else %}{# Auto-save edits (bug #12) — see weight input above #}
+           hx-post="{% url 'workouts:update_set' session.id set_log.id %}"
+           hx-trigger="input changed delay:400ms" hx-include="closest form" hx-swap="none"{% endif %}
            class="w-16 rounded border border-slate-300 px-2 py-1 text-sm tabular-nums focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
     <span class="text-xs text-slate-500">reps</span>
   </label>

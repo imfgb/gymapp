@@ -116,6 +116,47 @@ def test_toggle_unit_flips_exercise_display(client_alice):
 
 
 @pytest.mark.django_db
+def test_editable_set_row_autosaves_weight_and_reps(client_alice):
+    """bug #12: editable set inputs must auto-save (so a card re-render on delete
+    doesn't wipe typed-but-not-completed edits)."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=ExerciseFactory(), sets_count=1)
+    set_id = elog.set_logs.first().pk
+
+    content = client.get(reverse("workouts:session", args=[sess.pk])).content.decode()
+    update_url = reverse("workouts:update_set", args=[sess.pk, set_id])
+    # the weight/reps inputs post to update_set on debounced input (not just on submit)
+    assert content.count(f'hx-post="{update_url}"') >= 2
+    assert 'hx-trigger="input changed delay:400ms"' in content
+
+
+@pytest.mark.django_db
+def test_autosaved_edit_survives_set_delete_rerender(client_alice):
+    """bug #12 end-to-end: edit set 1 (auto-save), delete set 3 — the card
+    re-renders from the DB and set 1 keeps its edited weight."""
+    client, alice = client_alice
+    sess = workouts_service.start_session(alice)
+    elog = workouts_service.add_exercise_to_session(sess, exercise=ExerciseFactory(), sets_count=3)
+    sets = list(elog.set_logs.order_by("ordering"))
+
+    # auto-save fires for set 1 as the user types a new weight (kg exercise)
+    client.post(
+        reverse("workouts:update_set", args=[sess.pk, sets[0].pk]),
+        {"weight_kg": "65", "reps": "7"},
+    )
+    # user deletes set 3 -> the view re-renders the whole exercise card
+    resp = client.post(reverse("workouts:delete_set", args=[sess.pk, sets[2].pk]))
+
+    assert resp.status_code == 200
+    sets[0].refresh_from_db()
+    assert sets[0].weight_kg == Decimal("65")
+    assert sets[0].reps == 7
+    # the edited value is present in the re-rendered card (not reverted)
+    assert 'value="65' in resp.content.decode()
+
+
+@pytest.mark.django_db
 def test_cancel_deletes_in_progress_session(client_alice):
     """feedback #5: cancelling a session started by mistake deletes it + its logs."""
     client, alice = client_alice

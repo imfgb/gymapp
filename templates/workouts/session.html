@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Entrenamiento · Smart Fit Altama{% endblock %}
+{% block title %}Entrenamiento · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6 flex flex-wrap items-baseline justify-between gap-3"
@@ -154,7 +154,7 @@
               {% csrf_token %}
               <input type="hidden" name="slug" value="{{ ex.slug }}">
               <input type="hidden" name="sets_count" value="3">
-              <button class="rounded-md bg-brand px-3 py-1 text-xs text-ink hover:bg-brand-dark">Agregar</button>
+              <button class="rounded-md bg-brand px-3 py-1 text-xs text-white hover:bg-brand-dark">Agregar</button>
             </form>
           </li>
         {% endfor %}
@@ -215,7 +215,7 @@
                  class="mt-1 block w-20 rounded-md border border-slate-300 px-3 py-2 text-sm">
         </label>
 
-        <button class="rounded-md bg-brand px-3 py-2 text-sm text-ink hover:bg-brand-dark">
+        <button class="rounded-md bg-brand px-3 py-2 text-sm text-white hover:bg-brand-dark">
           Crear y agregar
         </button>
       </form>

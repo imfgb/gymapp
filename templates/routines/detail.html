@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ routine.name }} · Smart Fit Altama{% endblock %}
+{% block title %}{{ routine.name }} · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6 flex flex-wrap items-baseline justify-between gap-2">
@@ -11,7 +11,7 @@
   <div class="flex flex-wrap gap-2">
     <form method="post" action="{% url 'routines:apply_to_week' routine.id %}">
       {% csrf_token %}
-      <button class="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-ink hover:bg-brand-dark">
+      <button class="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark">
         Programar en la semana
       </button>
     </form>
@@ -43,6 +43,6 @@
   {% csrf_token %}
   <input type="text" name="label" placeholder="Día (p.ej. Push A)"
          class="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm">
-  <button class="rounded-md bg-brand px-3 py-2 text-sm text-ink hover:bg-brand-dark">+ Día</button>
+  <button class="rounded-md bg-brand px-3 py-2 text-sm text-white hover:bg-brand-dark">+ Día</button>
 </form>
 {% endblock %}

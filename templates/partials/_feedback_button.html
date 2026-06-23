@@ -10,7 +10,7 @@
           @click="open = true"
           title="Reportar un bug"
           aria-label="Reportar un bug"
-          class="group flex h-12 w-12 items-center justify-center rounded-full bg-brand text-ink shadow-lg ring-1 ring-black/10
+          class="group flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg ring-1 ring-black/10
                  hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 active:shadow-md
                  focus:outline-none focus:ring-2 focus:ring-brand/60">
     {# Inline SVG bug — body + antennae + legs. Original shapes, no asset file. #}
@@ -62,7 +62,7 @@
         </label>
         <input type="hidden" name="page_url" :value="window.location.pathname + window.location.search">
         <button type="submit"
-                class="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink shadow-sm
+                class="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm
                        hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm">
           Reportar bug
         </button>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if injury %}{{ injury.name }}{% else %}Nueva lesión{% endif %} · Smart Fit Altama{% endblock %}
+{% block title %}{% if injury %}{{ injury.name }}{% else %}Nueva lesión{% endif %} · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -58,7 +58,7 @@
   </label>
 
   <div class="flex gap-2">
-    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
       {% if injury %}Guardar cambios{% else %}Registrar lesión{% endif %}
     </button>
     <a href="{% url 'injuries:list' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
@@ -122,7 +122,7 @@
             <form method="post" action="{% url 'injuries:avoid_add' injury.id %}">
               {% csrf_token %}
               <input type="hidden" name="slug" value="{{ ex.slug }}">
-              <button class="rounded bg-brand px-2 py-1 text-xs text-ink hover:bg-brand-dark">Agregar</button>
+              <button class="rounded bg-brand px-2 py-1 text-xs text-white hover:bg-brand-dark">Agregar</button>
             </form>
           </li>
         {% endif %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Bloque · Smart Fit Altama{% endblock %}
+{% block title %}Bloque · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -38,7 +38,7 @@
           <div class="flex items-baseline justify-between">
             <span class="font-medium">Semana {{ w.week }} · {{ w.title }}</span>
             {% if not status.is_finished and w.week == status.week_index %}
-              <span class="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-ink">Ahora</span>
+              <span class="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">Ahora</span>
             {% elif w.is_deload %}
               <span class="text-xs text-slate-400">descarga</span>
             {% endif %}
@@ -63,7 +63,7 @@
         {% endfor %}
       </select>
     </label>
-    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
       Iniciar bloque (hoy)
     </button>
   </form>

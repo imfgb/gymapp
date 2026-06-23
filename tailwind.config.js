@@ -9,9 +9,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Smart Fit brand: vivid yellow on near-black.
-        brand: { DEFAULT: "#F5E000", dark: "#D8C400" },
-        ink: "#0B0B0B",
+        // GymApp brand: indigo accent on a dark slate. `brand` backs primary
+        // buttons/accents (use text-white on it); `ink` is the dark nav/bg.
+        brand: { DEFAULT: "#4F46E5", dark: "#4338CA" },
+        ink: "#0F172A",
       },
       keyframes: {
         // Subtle fade+rise — page content + cards entrance.
@@ -21,8 +22,8 @@ module.exports = {
         },
         // Brand-color pulse halo around the daily-advice card.
         "pulse-brand": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(245, 224, 0, 0.45)" },
-          "50%": { boxShadow: "0 0 0 10px rgba(245, 224, 0, 0)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(79, 70, 229, 0.45)" },
+          "50%": { boxShadow: "0 0 0 10px rgba(79, 70, 229, 0)" },
         },
         // Used for the rest timer banner sliding in.
         "slide-down": {

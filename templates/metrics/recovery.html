@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Recuperación · Smart Fit Altama{% endblock %}
+{% block title %}Recuperación · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -49,7 +49,7 @@
             <input type="radio" name="sleep_quality" value="{{ n }}" class="peer sr-only"
                    {% if today_snap and today_snap.sleep_quality|stringformat:"s" == n %}checked{% endif %}>
             <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
-                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-white">{{ n }}</span>
           </label>
         {% endfor %}
       </div>
@@ -65,7 +65,7 @@
             <input type="radio" name="stress_level" value="{{ n }}" class="peer sr-only"
                    {% if today_snap and today_snap.stress_level|stringformat:"s" == n %}checked{% endif %}>
             <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
-                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-white">{{ n }}</span>
           </label>
         {% endfor %}
       </div>
@@ -81,13 +81,13 @@
             <input type="radio" name="soreness_overall" value="{{ n }}" class="peer sr-only"
                    {% if today_snap and today_snap.soreness_overall|stringformat:"s" == n %}checked{% endif %}>
             <span class="block cursor-pointer rounded-md border border-slate-300 px-2 py-2 text-center text-sm
-                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">{{ n }}</span>
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-white">{{ n }}</span>
           </label>
         {% endfor %}
       </div>
     </fieldset>
 
-    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+    <button class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
       {% if today_snap %}Actualizar{% else %}Guardar{% endif %}
     </button>
   </form>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Preferencias de comida · Smart Fit Altama{% endblock %}
+{% block title %}Preferencias de comida · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -26,7 +26,7 @@
   {% endfor %}
 
   <div class="flex gap-2">
-    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-ink hover:bg-brand-dark">Guardar preferencias</button>
+    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">Guardar preferencias</button>
     <a href="{% url 'nutrition:home' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Volver</a>
   </div>
 </form>

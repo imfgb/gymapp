@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Bienvenido · Smart Fit Altama{% endblock %}
+{% block title %}Bienvenido · GymApp{% endblock %}
 
 {% block content %}
 <header class="mb-6">
@@ -36,7 +36,7 @@
             <input type="radio" name="sex" value="{{ value }}" class="peer sr-only"
                    {% if profile.sex == value %}checked{% endif %} required>
             <span class="block cursor-pointer rounded-md border border-slate-300 px-3 py-2 text-center text-sm
-                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-ink">
+                         peer-checked:border-brand peer-checked:bg-brand peer-checked:font-semibold peer-checked:text-white">
               {% if value == "male" %}Hombre{% else %}Mujer{% endif %}
             </span>
           </label>
@@ -88,7 +88,7 @@
     </label>
   </fieldset>
 
-  <button type="submit" class="rounded-md bg-brand px-5 py-2 text-sm font-medium text-ink hover:bg-brand-dark">
+  <button type="submit" class="rounded-md bg-brand px-5 py-2 text-sm font-medium text-white hover:bg-brand-dark">
     Empezar
   </button>
 </form>

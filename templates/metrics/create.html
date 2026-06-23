@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load l10n %}
-{% block title %}Registrar medición · Smart Fit Altama{% endblock %}
+{% block title %}Registrar medición · GymApp{% endblock %}
 
 {% block content %}
 <h1 class="mb-4 text-2xl font-semibold">Registrar medición</h1>
@@ -46,7 +46,7 @@
            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2">
   </label>
   <div class="flex gap-2">
-    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm text-ink hover:bg-brand-dark">Guardar</button>
+    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark">Guardar</button>
     <a href="{% url 'metrics:list' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Cancelar</a>
   </div>
 </form>

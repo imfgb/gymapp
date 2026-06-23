@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load l10n %}
-{% block title %}Metas del mes · Smart Fit Altama{% endblock %}
+{% block title %}Metas del mes · GymApp{% endblock %}
 
 {% block content %}
 <h1 class="mb-1 text-2xl font-semibold">Metas del mes</h1>
@@ -47,7 +47,7 @@
   </label>
 
   <div class="flex gap-2">
-    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm text-ink hover:bg-brand-dark">Guardar metas</button>
+    <button type="submit" class="rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark">Guardar metas</button>
     <a href="{% url 'dashboard:home' %}" class="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50">Volver</a>
   </div>
 </form>

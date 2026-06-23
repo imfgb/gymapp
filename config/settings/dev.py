@@ -10,6 +10,11 @@ from .base import INSTALLED_APPS, MIDDLEWARE
 
 DEBUG = True
 
+# Dev only: accept any Host header so a phone on the same wifi can reach
+# `python manage.py runserver 0.0.0.0:8001` via the Mac's LAN IP. prod.py forces
+# real ALLOWED_HOSTS (DEBUG is False there), so this never affects production.
+ALLOWED_HOSTS = ["*"]
+
 # Internal IPs for django-debug-toolbar
 INTERNAL_IPS = ["127.0.0.1", "localhost"]
 

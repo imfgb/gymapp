@@ -12,6 +12,20 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}GymApp{% endblock %}</title>
 
+  {% comment %}
+    Add-to-Home-Screen: standalone (no Safari chrome), dark status bar to match
+    the slate nav, custom icon + name. iOS uses the apple-* tags; the manifest
+    is for Android/desktop Chrome. No service worker — no offline (per ADR-003).
+  {% endcomment %}
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="GymApp">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192.png' %}">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+
   {# Compiled Tailwind. Run `npm run build:css` (or `npm run watch:css`) to refresh. #}
   <link rel="stylesheet" href="{% static 'tailwind.css' %}">
 
